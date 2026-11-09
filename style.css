@@ -356,7 +356,7 @@ input:focus, select:focus { outline: 2px solid var(--primary); outline-offset: -
 .cloth .t { font-weight: 700; font-size: 0.95rem; }
 .cloth .brand { padding: 0 10px 8px; color: var(--muted); font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cloth .meta:last-child { padding-bottom: 10px; }
-.dots { display: inline-flex; gap: 3px; flex-wrap: wrap; justify-content: flex-end; }
+.dots { display: inline-flex; gap: 3px; flex: none; }
 .dots i, .chip .sw {
   display: inline-block;
   width: 14px; height: 14px;
@@ -413,3 +413,86 @@ input:focus, select:focus { outline: 2px solid var(--primary); outline-offset: -
   background: var(--line);
 }
 .items .thumb.no-photo { visibility: hidden; }
+
+/* ---------- 物品照片與衣服標籤 ---------- */
+.photo-row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.btn.photo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: auto;
+  margin: 0;
+  padding: 0 16px;
+  color: var(--primary);
+  font-size: 1rem;
+  cursor: pointer;
+}
+.photo-btn input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.photo-btn .small { font-weight: 400; }
+.photo-preview { position: relative; flex: none; }
+.photo-preview img { display: block; width: 72px; height: 72px; object-fit: cover; border-radius: 12px; background: var(--line); }
+.photo-remove {
+  position: absolute;
+  top: -8px; right: -8px;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: #111827;
+  color: #fff;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.remove-photo { display: block; margin: -6px auto 12px; color: var(--bad); }
+
+.clothing-box {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 12px 0;
+  margin-bottom: 14px;
+  background: #fafafa;
+}
+.clothing-head { font-weight: 700; color: var(--text); margin-bottom: 10px; }
+.sub-types {
+  margin: -8px 0 16px;
+  padding: 10px;
+  border-radius: 10px;
+  background: #eef2ff;
+}
+.sub-types .chips.pick { margin-bottom: 0; }
+
+.chip.has-thumb { padding-left: 4px; }
+.chip-thumb { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; background: var(--line); flex: none; }
+.chip-thumb.no-photo { visibility: hidden; }
+.memory-tip { margin: 8px 0 0; }
+#memory-empty:not([hidden]) + .memory-tip { display: none; }
+
+/* 衣櫃分頁與篩選 */
+.tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 10px;
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tab {
+  flex: none;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--muted);
+  padding: 10px 12px;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  min-height: 44px;
+}
+.tab small { margin-left: 4px; font-size: 0.75rem; }
+.tab.on { color: var(--primary); border-bottom-color: var(--primary); font-weight: 700; }
+.filters { margin-bottom: 4px; }
+.filter-row { display: flex; align-items: center; gap: 8px; }
+.filter-label { flex: none; width: 2.5em; font-size: 0.85rem; color: var(--muted); }
+.filter-row .chips.filter { flex: 1; min-width: 0; margin-bottom: 8px; }
+.filter-row .chip { min-height: 34px; padding: 4px 10px; font-size: 0.9rem; }
+.cloth .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.chip.on small { color: rgba(255,255,255,.85); }
