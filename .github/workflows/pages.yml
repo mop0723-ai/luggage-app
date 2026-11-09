@@ -2,7 +2,7 @@ name: 發布到 GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, claude/epic-faraday-15bvul]
   workflow_dispatch:
 
 permissions:
@@ -16,6 +16,8 @@ concurrency:
 
 jobs:
   deploy:
+    # 只發布預設分支，不管預設分支是 main 還是開發分支都能運作
+    if: github.event_name == 'workflow_dispatch' || github.ref_name == github.event.repository.default_branch
     runs-on: ubuntu-latest
     environment:
       name: github-pages
