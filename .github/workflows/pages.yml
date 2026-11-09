@@ -2,7 +2,7 @@ name: 發布到 GitHub Pages
 
 on:
   push:
-    branches: [claude/epic-faraday-15bvul, main]
+    branches: [main]
   workflow_dispatch:
 
 permissions:

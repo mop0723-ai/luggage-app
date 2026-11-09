@@ -25,20 +25,20 @@
           <div class="muted">目前行李總重量</div>
           <div class="total-value"><span id="total-num">0.0</span> kg</div>
         </div>
-        <div class="right">
-          <div class="muted">總上限</div>
+        <button type="button" id="go-allowance" class="right limit-link">
+          <div class="muted">總上限 <span class="edit-hint">調整</span></div>
           <div class="total-value"><span id="limit-num">0</span> kg</div>
-        </div>
+        </button>
       </div>
 
       <div id="bag-list"></div>
 
-      <details class="card settings">
-        <summary>行李設定</summary>
-        <p class="muted small">「空箱重」會算進總重量。</p>
+      <div id="allowance" class="card settings">
+        <div class="card-head"><span>行李額度（依航空公司調整）</span></div>
+        <p class="muted small">每次出發前，依這次航空公司給的額度修改「上限」。「空箱」是行李箱本身的重量，會算進總重量。改完會自動儲存。</p>
         <div id="bag-settings"></div>
         <button type="button" id="add-bag" class="btn ghost">＋ 新增一個行李</button>
-      </details>
+      </div>
     </section>
 
     <!-- 新增物品 -->

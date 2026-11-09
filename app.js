@@ -2,7 +2,24 @@
   'use strict';
 
   var STORE_KEY = 'luggage-app-v1';
-  var CATEGORIES = ['衣物', '電子產品', '盥洗用品', '藥品', '證件文件', '食品', '伴手禮', '其他'];
+  // 七大品類：name 存進資料，hint 只在選單裡提示
+  var CATEGORY_LIST = [
+    { name: '必備品', hint: '護照、現金、信用卡、簽證、衣服、鞋子配件' },
+    { name: '保健品', hint: '保健食品與藥品' },
+    { name: '保養品', hint: '臉部、身體、手部' },
+    { name: '特殊類', hint: '騎馬、打網球等活動用品' },
+    { name: '禮物', hint: '' },
+    { name: '食品', hint: '' },
+    { name: '電線電器', hint: '' }
+  ];
+  var CATEGORIES = CATEGORY_LIST.map(function (c) { return c.name; });
+  var NUMS = ['①', '②', '③', '④', '⑤', '⑥', '⑦'];
+  // 第一版的舊品類，對應到新的七大品類
+  var OLD_CATEGORY_MAP = {
+    '衣物': '必備品', '證件文件': '必備品', '其他': '必備品',
+    '藥品': '保健品', '盥洗用品': '保養品',
+    '伴手禮': '禮物', '食品': '食品', '電子產品': '電線電器'
+  };
   // 剩餘比例低於這個值就顯示黃色
   var WARN_RATIO = 0.2;
 
@@ -27,10 +44,17 @@
       var raw = localStorage.getItem(STORE_KEY);
       if (raw) {
         var s = JSON.parse(raw);
-        if (s && Array.isArray(s.bags) && Array.isArray(s.items) && Array.isArray(s.memory)) return s;
+        if (s && Array.isArray(s.bags) && Array.isArray(s.items) && Array.isArray(s.memory)) return migrate(s);
       }
     } catch (e) { /* 讀不到就用預設值 */ }
     return defaultState();
+  }
+
+  function migrate(s) {
+    s.items.concat(s.memory).forEach(function (x) {
+      if (CATEGORIES.indexOf(x.category) < 0) x.category = OLD_CATEGORY_MAP[x.category] || '必備品';
+    });
+    return s;
   }
 
   function save() {
@@ -178,6 +202,14 @@
     renderHome();
   });
 
+  $('#go-allowance').addEventListener('click', function () {
+    var box = $('#allowance');
+    box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    box.classList.remove('flash');
+    void box.offsetWidth;
+    box.classList.add('flash');
+  });
+
   $('#add-bag').addEventListener('click', function () {
     state.bags.push({ id: uid(), name: '行李 ' + (state.bags.length + 1), limit: 7, tare: 0 });
     save();
@@ -199,8 +231,9 @@
 
   function renderAdd() {
     var cat = $('#f-cat').value;
-    $('#f-cat').innerHTML = CATEGORIES.map(function (c) {
-      return '<option>' + esc(c) + '</option>';
+    $('#f-cat').innerHTML = CATEGORY_LIST.map(function (c, i) {
+      return '<option value="' + esc(c.name) + '">' + NUMS[i] + ' ' + esc(c.name) +
+        (c.hint ? '（' + esc(c.hint) + '）' : '') + '</option>';
     }).join('');
     if (cat) $('#f-cat').value = cat;
 

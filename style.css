@@ -137,8 +137,11 @@ h1 { font-size: 1.4rem; margin: 4px 0 16px; }
 }
 .icon-btn:active { background: var(--bg); }
 
-/* 設定 */
-.settings summary { font-weight: 700; cursor: pointer; padding: 2px 0; }
+/* 行李額度 */
+.limit-link { border: 0; background: none; font: inherit; color: inherit; padding: 0; cursor: pointer; }
+.edit-hint { color: var(--primary); font-size: 0.8rem; font-weight: 700; }
+.settings.flash { animation: flash 1.2s; }
+@keyframes flash { 0%, 40% { box-shadow: 0 0 0 3px var(--primary); } 100% { box-shadow: 0 0 0 0 transparent; } }
 .bag-edit { display: grid; grid-template-columns: 1fr 74px 74px 36px; gap: 6px; align-items: end; margin-bottom: 8px; }
 .bag-edit label { font-size: 0.75rem; color: var(--muted); }
 
