@@ -254,7 +254,7 @@ input:focus, select:focus { outline: 2px solid var(--primary); outline-offset: -
   color: var(--muted);
   font-size: 0.8rem;
 }
-.tabbar .ico { font-size: 1.4rem; line-height: 1.2; }
+.tabbar .ico { display: block; width: 26px; height: 26px; margin-bottom: 2px; }
 .tabbar a.on { color: var(--primary); font-weight: 700; }
 
 .toast {

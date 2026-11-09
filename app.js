@@ -216,7 +216,7 @@
     renderHome();
   });
 
-  // ---------- 新增物品 ----------
+  // ---------- 放進行李 ----------
   var form = $('#add-form');
   var unit = '個';
   var managing = false;
