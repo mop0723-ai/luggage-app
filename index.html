@@ -56,19 +56,21 @@
 
       <form id="add-form" class="card form" autocomplete="off">
         <label>名稱
-          <input id="f-name" name="name" required maxlength="40" placeholder="例如：充電線" list="name-options">
+          <input id="f-name" name="name" required maxlength="40" placeholder="例如：充電線、護照、iPad" list="name-options">
           <datalist id="name-options"></datalist>
         </label>
 
         <div class="row">
           <label class="grow">重量（每個或每包）
             <div class="input-unit">
+              <span id="f-approx" class="approx" hidden>約</span>
               <input id="f-weight" name="weight" type="number" inputmode="decimal" step="any" min="0" required placeholder="0.3">
               <select id="f-wunit" aria-label="重量單位">
                 <option value="kg">kg</option>
                 <option value="g">g</option>
               </select>
             </div>
+            <span id="weight-hint" class="weight-hint" hidden></span>
           </label>
         </div>
 
@@ -113,6 +115,7 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+  <script src="weights.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

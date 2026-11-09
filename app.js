@@ -220,6 +220,90 @@
   var form = $('#add-form');
   var unit = '個';
   var managing = false;
+  // 重量欄目前的來源：'' 空白、'ref' 參考重量、'memory' 常帶物品、'user' 自己輸入
+  var weightSource = '';
+
+  // ---------- 參考重量比對 ----------
+  // 常見簡體字轉繁體，讓簡體輸入也能對到
+  var S2T = {};
+  ('线線电電头頭转轉换換机機风風药藥镜鏡键鍵盘盤装裝袜襪裤褲衬襯伞傘护護钱錢签簽证證维維鱼魚' +
+   '马馬网網运運动動叶葉饼餅宝寶记記笔筆脑腦长長绒絨内內带帶凉涼阳陽叠疊隐隱妆妝晒曬体體胡鬍' +
+   '垫墊温溫壶壺凤鳳红紅坚堅卷捲离離夹夾触觸阅閱读讀戴戴发髮洁潔肤膚润潤乐樂鞋鞋针針织織连連' +
+   '单單数數码碼备備源源移移动動盔盔帽帽围圍巾巾腰腰拍拍罩罩').replace(/(.)(.)/g, function (_, a, b) { S2T[a] = b; });
+
+  function norm(str) {
+    return String(str).toLowerCase().replace(/[^\s]/g, function (c) { return S2T[c] || c; })
+      .replace(/[\s\-_.,，。、・·()（）\[\]【】\/]+/g, '');
+  }
+
+  var REFS = (window.REFERENCE_WEIGHTS || []).map(function (r) {
+    return { ref: r, keys: [r.name].concat(r.aliases || []).map(norm).filter(Boolean) };
+  });
+
+  // 寬鬆比對：完全相同 > 名稱裡包含關鍵字（例如「iPhone充電線」）> 打到一半（例如「行動電」）
+  function findRef(name) {
+    var q = norm(name);
+    if (!q) return null;
+    var best = null, bestScore = 0;
+    REFS.forEach(function (x) {
+      x.keys.forEach(function (k) {
+        var score = 0;
+        if (q === k) score = 1000 + k.length;
+        // 中文名稱的重點通常在最後，例如「iPhone充電線」是充電線，不是手機
+        else if (k.length >= 2 && q.indexOf(k) >= 0) score = 500 + (q.slice(-k.length) === k ? 200 : 0) + k.length;
+        else if (q.length >= 2 && k.indexOf(q) === 0) score = 100 - k.length;
+        if (score > bestScore) { bestScore = score; best = x.ref; }
+      });
+    });
+    return best;
+  }
+
+  function setWeightField(kg) {
+    if (kg < 1) {
+      $('#f-wunit').value = 'g';
+      $('#f-weight').value = Math.round(kg * 1000);
+    } else {
+      $('#f-wunit').value = 'kg';
+      $('#f-weight').value = Math.round(kg * 1000) / 1000;
+    }
+  }
+
+  function setWeightSource(src, text) {
+    weightSource = src;
+    $('#f-approx').hidden = src !== 'ref';
+    $('#weight-hint').textContent = text || '';
+    $('#weight-hint').hidden = !text;
+  }
+
+  // 名稱改變時：先找自己記過的重量，再找參考重量表
+  function autofillFromName() {
+    if (weightSource === 'user') return;
+    var name = $('#f-name').value;
+    var m = findMemory(name);
+    var ref = findRef(name);
+    if (!m && ref) m = state.memory.find(function (x) { return findRef(x.name) === ref; });
+    if (m) {
+      setWeightField(m.weight);
+      if (CATEGORIES.indexOf(m.category) >= 0) $('#f-cat').value = m.category;
+      setUnit(m.unit || '個');
+      if (m.estimated) {
+        setWeightSource('ref', '這是參考重量，秤過之後可以直接改成實際重量。');
+      } else {
+        setWeightSource('memory', '使用你記錄的重量（' + m.name + '）。');
+      }
+    } else if (ref) {
+      setWeightField(ref.weight);
+      $('#f-cat').value = ref.category;
+      setUnit(ref.unit || '個');
+      setWeightSource('ref', '參考「' + ref.name + '」' + (ref.note ? '（' + ref.note + '）' : '') +
+        '的大約重量，秤過之後可以直接改成實際重量。');
+    } else if (weightSource) {
+      $('#f-weight').value = '';
+      $('#f-wunit').value = 'kg';
+      setWeightSource('');
+    }
+    updatePreview();
+  }
 
   function setUnit(u) {
     unit = u;
@@ -251,32 +335,34 @@
     var list = state.memory.slice().sort(function (a, b) { return (b.uses || 0) - (a.uses || 0); });
     $('#memory-list').innerHTML = list.map(function (m) {
       return '<button type="button" class="chip" data-mem="' + esc(m.name) + '">' +
-        esc(m.name) + ' <small>' + fmtWeight(m.weight) + '/' + esc(m.unit) + '</small><span class="x">✕</span></button>';
+        esc(m.name) + ' <small>' + (m.estimated ? '約' : '') + fmtWeight(m.weight) + '/' + esc(m.unit) +
+        '</small><span class="x">✕</span></button>';
     }).join('');
     $('#memory-empty').hidden = list.length > 0;
     $('#toggle-manage').hidden = list.length === 0;
     if (!list.length) managing = false;
     $('#memory-box').classList.toggle('managing', managing);
     $('#toggle-manage').textContent = managing ? '完成' : '管理';
-    $('#name-options').innerHTML = list.map(function (m) {
-      return '<option value="' + esc(m.name) + '">';
+    var names = list.map(function (m) { return m.name; });
+    (window.REFERENCE_WEIGHTS || []).forEach(function (r) {
+      if (!findMemory(r.name)) names.push(r.name);
+    });
+    $('#name-options').innerHTML = names.map(function (n) {
+      return '<option value="' + esc(n) + '">';
     }).join('');
   }
 
   function findMemory(name) {
-    var key = name.trim().toLowerCase();
-    return state.memory.find(function (m) { return m.name.toLowerCase() === key; });
+    var key = norm(name);
+    if (!key) return null;
+    return state.memory.find(function (m) { return norm(m.name) === key; });
   }
 
   function applyMemory(m) {
     $('#f-name').value = m.name;
-    if (m.weight < 1) {
-      $('#f-wunit').value = 'g';
-      $('#f-weight').value = Math.round(m.weight * 1000);
-    } else {
-      $('#f-wunit').value = 'kg';
-      $('#f-weight').value = m.weight;
-    }
+    setWeightField(m.weight);
+    setWeightSource(m.estimated ? 'ref' : 'memory',
+      m.estimated ? '這是參考重量，秤過之後可以直接改成實際重量。' : '');
     if (CATEGORIES.indexOf(m.category) >= 0) $('#f-cat').value = m.category;
     if (bagById(m.bagId)) $('#f-bag').value = m.bagId;
     $('#f-qty').value = 1;
@@ -319,11 +405,14 @@
     renderMemory();
   });
 
-  // 輸入的名稱剛好是記過的物品，就自動帶入
-  $('#f-name').addEventListener('change', function () {
-    var m = findMemory(this.value);
-    if (m) applyMemory(m);
-    updatePreview();
+  // 輸入名稱時自動帶入重量
+  $('#f-name').addEventListener('input', autofillFromName);
+
+  // 自己改了重量或單位，就以輸入的為準
+  ['#f-weight', '#f-wunit'].forEach(function (sel) {
+    $(sel).addEventListener('input', function () {
+      setWeightSource($('#f-weight').value ? 'user' : '');
+    });
   });
 
   ['#f-name', '#f-weight', '#f-qty', '#f-wunit'].forEach(function (sel) {
@@ -364,12 +453,16 @@
     state.items.push(item);
 
     // 記住這樣物品，下次可以直接選
+    // 用參考重量時標記為估計值；自己輸入過的重量就以你的為準
+    var estimated = weightSource === 'ref';
     var m = findMemory(name);
     if (m) {
       m.name = name; m.weight = w; m.unit = unit; m.category = item.category; m.bagId = item.bagId;
+      m.estimated = estimated;
       m.uses = (m.uses || 0) + 1;
     } else {
-      state.memory.push({ name: name, weight: w, unit: unit, category: item.category, bagId: item.bagId, uses: 1 });
+      state.memory.push({ name: name, weight: w, unit: unit, category: item.category, bagId: item.bagId,
+        estimated: estimated, uses: 1 });
     }
     save();
 
@@ -382,6 +475,7 @@
     $('#f-wunit').value = 'kg';
     $('#f-qty').value = 1;
     setUnit('個');
+    setWeightSource('');
     renderMemory();
     $('#f-name').focus();
   });
