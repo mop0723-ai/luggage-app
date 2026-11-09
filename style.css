@@ -285,3 +285,131 @@ input:focus, select:focus { outline: 2px solid var(--primary); outline-offset: -
   text-align: center;
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ---------- 我的衣櫃 ---------- */
+.page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.page-head h1 { margin: 4px 0; }
+.btn.small-btn {
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+  min-height: 40px;
+  padding: 0 16px;
+  font-size: 0.95rem;
+  text-decoration: none;
+}
+.back { text-decoration: none; font-weight: 700; min-width: 60px; }
+.center { text-align: center; }
+
+.chips.filter {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  margin-bottom: 10px;
+  padding-bottom: 2px;
+}
+.chips.filter::-webkit-scrollbar { display: none; }
+.chips.filter .chip { flex: none; }
+.chip.on { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 700; }
+
+.closet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+  margin-top: 6px;
+}
+.closet-grid .empty { grid-column: 1 / -1; }
+.cloth {
+  display: block;
+  background: var(--card);
+  border-radius: var(--radius);
+  overflow: hidden;
+  text-decoration: none;
+  color: var(--text);
+}
+.cloth:active { opacity: .8; }
+.cloth .ph {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  background: #e5e7eb url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 7.5V7a2 2 0 1 0-2-2'/%3E%3Cpath d='M12 7.5 3 15a1.6 1.6 0 0 0 1 3h16a1.6 1.6 0 0 0 1-3z'/%3E%3C/svg%3E") center / 40% no-repeat;
+}
+.cloth .ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cloth .ph img:not([src]), .cloth .ph img.no-photo { visibility: hidden; }
+.cloth .packed {
+  position: absolute;
+  left: 8px; top: 8px;
+  background: var(--ok);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.cloth .meta { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 8px 10px 2px; }
+.cloth .t { font-weight: 700; font-size: 0.95rem; }
+.cloth .brand { padding: 0 10px 8px; color: var(--muted); font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cloth .meta:last-child { padding-bottom: 10px; }
+.dots { display: inline-flex; gap: 3px; flex-wrap: wrap; justify-content: flex-end; }
+.dots i, .chip .sw {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 1px solid rgba(0,0,0,.18);
+}
+.chip .sw { margin-right: 2px; }
+.empty-big { text-align: center; color: var(--muted); padding: 40px 10px; line-height: 1.8; }
+
+.photo-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 4 / 3;
+  max-height: 60vh;
+  margin: 0 0 14px !important;
+  border: 2px dashed #cbd5e1;
+  border-radius: var(--radius);
+  background: var(--card);
+  overflow: hidden;
+  cursor: pointer;
+}
+.photo-box.has-photo { border-style: solid; border-color: transparent; background: #e5e7eb; }
+.photo-box input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.photo-box img { width: 100%; height: 100%; object-fit: contain; }
+.photo-hint { display: flex; flex-direction: column; align-items: center; gap: 8px; color: var(--primary); font-weight: 700; }
+.photo-change {
+  position: absolute;
+  right: 10px; bottom: 10px;
+  background: rgba(17,24,39,.75);
+  color: #fff;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+
+.field-title { font-weight: 700; margin: 4px 0 8px; color: var(--text); }
+.chips.pick { margin-bottom: 16px; }
+.unit-text { align-self: center; margin-top: 4px; color: var(--muted); font-weight: 700; padding: 0 4px; }
+
+.pack-box { margin-top: 14px; }
+.pack-box .row { display: flex; gap: 10px; align-items: center; }
+.pack-box select { margin: 0; flex: 1; }
+.pack-btn { width: auto; flex: none; padding: 0 18px; }
+.pack-btn.out { flex: 1; color: var(--bad); }
+.btn.danger { background: transparent; color: var(--bad); margin-top: 6px; }
+
+.items .thumb {
+  width: 36px; height: 36px;
+  flex: none;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--line);
+}
+.items .thumb.no-photo { visibility: hidden; }

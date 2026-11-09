@@ -31,7 +31,8 @@
         { id: uid(), name: '登機箱', limit: 7, tare: 2.5 }
       ],
       items: [],   // { id, name, weight(每單位 kg), qty, unit, category, bagId }
-      memory: []   // { name, weight, unit, category, bagId, uses }
+      memory: [],  // { name, weight, unit, category, bagId, uses, estimated }
+      wardrobe: [] // 衣櫃：{ id, type, colors[], pattern, seasons[], styles[], brand, weight, createdAt }，照片另存在 IndexedDB
     };
   }
 
@@ -51,6 +52,7 @@
   }
 
   function migrate(s) {
+    if (!Array.isArray(s.wardrobe)) s.wardrobe = [];
     s.items.concat(s.memory).forEach(function (x) {
       if (CATEGORIES.indexOf(x.category) < 0) x.category = OLD_CATEGORY_MAP[x.category] || '必備品';
     });
@@ -131,7 +133,8 @@
       var items = state.items.filter(function (it) { return it.bagId === b.id; });
       var list = items.length
         ? '<ul class="items">' + items.map(function (it) {
-            return '<li><span class="name">' + esc(it.name) + ' × ' + it.qty + ' ' + esc(it.unit) +
+            return '<li>' + (it.wardrobeId ? '<img class="thumb" data-photo="' + esc(it.wardrobeId) + '" alt="">' : '') +
+              '<span class="name">' + esc(it.name) + ' × ' + it.qty + ' ' + esc(it.unit) +
               '<span class="tag">' + esc(it.category) + '</span></span>' +
               '<span class="w">' + fmtWeight(it.weight * it.qty) + '</span>' +
               '<button class="icon-btn" data-del-item="' + it.id + '" aria-label="刪除 ' + esc(it.name) + '">✕</button></li>';
@@ -144,6 +147,7 @@
         list + '</div>';
     }).join('');
     $('#bag-list').innerHTML = html;
+    if (window.Closet) window.Closet.fillThumbs($('#bag-list'));
 
     renderBagSettings();
   }
@@ -481,16 +485,30 @@
   });
 
   // ---------- 畫面切換 ----------
+  // 網址：#home、#add、#closet（衣櫃）、#closet/new（新增衣服）、#closet/<id>（編輯衣服）
   function route() {
-    var view = location.hash === '#add' ? 'add' : 'home';
-    $('#view-home').hidden = view !== 'home';
-    $('#view-add').hidden = view !== 'add';
+    var parts = location.hash.replace(/^#/, '').split('/');
+    var view = ['add', 'closet'].indexOf(parts[0]) >= 0 ? parts[0] : 'home';
+    ['home', 'add', 'closet'].forEach(function (v) { $('#view-' + v).hidden = v !== view; });
     document.querySelectorAll('.tabbar a').forEach(function (a) {
       a.classList.toggle('on', a.getAttribute('data-view') === view);
     });
-    if (view === 'home') renderHome(); else renderAdd();
+    if (view === 'home') renderHome();
+    else if (view === 'add') renderAdd();
+    else if (window.Closet) window.Closet.show(decodeURIComponent(parts.slice(1).join('/')));
     window.scrollTo(0, 0);
   }
+
+  // 給衣櫃（closet.js）使用的共用功能
+  window.App = {
+    state: function () { return state; },
+    save: save,
+    toast: toast,
+    esc: esc,
+    uid: uid,
+    fmtWeight: fmtWeight,
+    findRef: findRef
+  };
 
   window.addEventListener('hashchange', route);
   // 其他分頁改了資料時同步
@@ -498,5 +516,6 @@
     if (e.key === STORE_KEY) { state = load(); route(); }
   });
 
-  route();
+  // 等所有程式（包含 closet.js）都載入後再顯示畫面
+  document.addEventListener('DOMContentLoaded', route);
 })();

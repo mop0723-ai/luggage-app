@@ -102,6 +102,81 @@
         <button type="submit" class="btn primary">加入行李</button>
       </form>
     </section>
+    <!-- 我的衣櫃 -->
+    <section id="view-closet" class="view" hidden>
+      <div id="closet-list">
+        <div class="page-head">
+          <h1>我的衣櫃</h1>
+          <a href="#closet/new" class="btn primary small-btn">＋ 新增衣服</a>
+        </div>
+        <div id="closet-filter-type" class="chips filter"></div>
+        <div id="closet-filter-season" class="chips filter"></div>
+        <div id="closet-grid" class="closet-grid"></div>
+        <p id="closet-empty" class="empty-big" hidden>衣櫃還是空的。<br>點右上角「＋ 新增衣服」，幫每件衣服拍張照吧！</p>
+        <p id="closet-storage" class="muted small center"></p>
+      </div>
+
+      <form id="closet-form" class="form" autocomplete="off" hidden>
+        <div class="page-head">
+          <a href="#closet" class="link back">‹ 衣櫃</a>
+          <h1 id="cf-title">新增衣服</h1>
+          <span></span>
+        </div>
+
+        <label class="photo-box" id="cf-photo-box">
+          <input id="cf-photo" type="file" accept="image/*">
+          <img id="cf-photo-img" alt="" hidden>
+          <span id="cf-photo-hint" class="photo-hint">
+            <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/></svg>
+            點這裡拍照或選照片
+          </span>
+          <span id="cf-photo-change" class="photo-change" hidden>換一張</span>
+        </label>
+
+        <div class="card">
+          <div class="field-title">種類</div>
+          <div id="cf-type" class="chips pick" data-mode="one"></div>
+
+          <div class="field-title">顏色 <span class="muted small">可複選</span></div>
+          <div id="cf-color" class="chips pick" data-mode="many"></div>
+
+          <div class="field-title">花紋</div>
+          <div id="cf-pattern" class="chips pick" data-mode="one"></div>
+
+          <div class="field-title">季節 <span class="muted small">可複選</span></div>
+          <div id="cf-season" class="chips pick" data-mode="many"></div>
+
+          <div class="field-title">風格 <span class="muted small">可複選</span></div>
+          <div id="cf-style" class="chips pick" data-mode="many"></div>
+
+          <label>品牌
+            <input id="cf-brand" maxlength="30" placeholder="例如：UNIQLO" list="brand-options">
+            <datalist id="brand-options"></datalist>
+          </label>
+
+          <label>重量
+            <div class="input-unit">
+              <span id="cf-approx" class="approx" hidden>約</span>
+              <input id="cf-weight" type="number" inputmode="decimal" step="any" min="0" placeholder="選好種類會自動帶入">
+              <span class="unit-text">g</span>
+            </div>
+          </label>
+        </div>
+
+        <button type="submit" class="btn primary">儲存</button>
+
+        <div id="cf-extra" hidden>
+          <div class="card pack-box">
+            <div class="field-title" id="cf-pack-title">放進行李</div>
+            <div class="row">
+              <select id="cf-bag" aria-label="放在哪個行李"></select>
+              <button type="button" id="cf-pack" class="btn ghost pack-btn">放進行李</button>
+            </div>
+          </div>
+          <button type="button" id="cf-delete" class="btn danger">從衣櫃刪除</button>
+        </div>
+      </form>
+    </section>
   </main>
 
   <nav class="tabbar">
@@ -111,11 +186,15 @@
     <a href="#add" data-view="add">
       <svg class="ico" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v9"/><path d="M8.5 7.5 12 11l3.5-3.5"/><path d="M8 9H5.5L3 13v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6l-2.5-4H16"/><path d="M3 13h5l1 2h6l1-2h5"/></svg><span>放進行李</span>
     </a>
+    <a href="#closet" data-view="closet">
+      <svg class="ico" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7.5V7a2 2 0 1 0-2-2"/><path d="M12 7.5 3 15a1.6 1.6 0 0 0 1 3h16a1.6 1.6 0 0 0 1-3z"/></svg><span>我的衣櫃</span>
+    </a>
   </nav>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script src="weights.js"></script>
   <script src="app.js"></script>
+  <script src="closet.js"></script>
 </body>
 </html>
