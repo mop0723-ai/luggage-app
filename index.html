@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1f2937">
+  <title>行李規劃</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <!-- 首頁 -->
+    <section id="view-home" class="view">
+      <div id="remain-card" class="remain-card">
+        <div class="remain-label">剩餘可購物公斤數</div>
+        <div class="remain-value"><span id="remain-num">0.0</span><small> kg</small></div>
+        <div id="remain-status" class="remain-status">充裕</div>
+      </div>
+
+      <div class="total-row">
+        <div>
+          <div class="muted">目前行李總重量</div>
+          <div class="total-value"><span id="total-num">0.0</span> kg</div>
+        </div>
+        <div class="right">
+          <div class="muted">總上限</div>
+          <div class="total-value"><span id="limit-num">0</span> kg</div>
+        </div>
+      </div>
+
+      <div id="bag-list"></div>
+
+      <details class="card settings">
+        <summary>行李設定</summary>
+        <p class="muted small">「空箱重」會算進總重量。</p>
+        <div id="bag-settings"></div>
+        <button type="button" id="add-bag" class="btn ghost">＋ 新增一個行李</button>
+      </details>
+    </section>
+
+    <!-- 新增物品 -->
+    <section id="view-add" class="view" hidden>
+      <h1>新增物品</h1>
+
+      <div id="memory-box" class="card">
+        <div class="card-head">
+          <span>常帶物品</span>
+          <button type="button" id="toggle-manage" class="link">管理</button>
+        </div>
+        <div id="memory-list" class="chips"></div>
+        <p id="memory-empty" class="muted small">還沒有記錄。新增過的物品會自動記在這裡，下次點一下就能帶入。</p>
+      </div>
+
+      <form id="add-form" class="card form" autocomplete="off">
+        <label>名稱
+          <input id="f-name" name="name" required maxlength="40" placeholder="例如：充電線" list="name-options">
+          <datalist id="name-options"></datalist>
+        </label>
+
+        <div class="row">
+          <label class="grow">重量（每個或每包）
+            <div class="input-unit">
+              <input id="f-weight" name="weight" type="number" inputmode="decimal" step="any" min="0" required placeholder="0.3">
+              <select id="f-wunit" aria-label="重量單位">
+                <option value="kg">kg</option>
+                <option value="g">g</option>
+              </select>
+            </div>
+          </label>
+        </div>
+
+        <div class="row">
+          <label class="grow">數量
+            <div class="stepper">
+              <button type="button" data-step="-1" aria-label="減少">－</button>
+              <input id="f-qty" name="qty" type="number" inputmode="numeric" min="1" step="1" value="1" required>
+              <button type="button" data-step="1" aria-label="增加">＋</button>
+            </div>
+          </label>
+          <label>單位
+            <div class="seg" id="f-unit">
+              <button type="button" data-unit="個" class="on">個</button>
+              <button type="button" data-unit="包">包</button>
+            </div>
+          </label>
+        </div>
+
+        <label>品類
+          <select id="f-cat" name="category"></select>
+        </label>
+
+        <label>放在哪個行李
+          <select id="f-bag" name="bag"></select>
+        </label>
+
+        <p id="preview" class="muted small"></p>
+        <button type="submit" class="btn primary">加入行李</button>
+      </form>
+    </section>
+  </main>
+
+  <nav class="tabbar">
+    <a href="#home" data-view="home">
+      <span class="ico">🧳</span><span>首頁</span>
+    </a>
+    <a href="#add" data-view="add">
+      <span class="ico">＋</span><span>新增物品</span>
+    </a>
+  </nav>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
