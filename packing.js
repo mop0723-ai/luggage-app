@@ -727,5 +727,97 @@
     if (t.id === 'pk-check-sheet' || t.id === 'pk-check-close') $('#pk-check-sheet').hidden = true;
   });
 
-  window.Packing = { show: show, pendingByBag: pendingByBag };
+  // ---------- 給首頁「我的行李」用 ----------
+  function nextList(create) {
+    var n = App.nextLeg();
+    if (!n) return null;
+    var l = listFor(n.trip.id);
+    if (!l && create) l = ensureList(n.trip);
+    if (l) reconcile(l);
+    return l;
+  }
+
+  // 某個行李箱裡「清單上要帶、還沒收好」的項目
+  function bagPending(bagId) {
+    var l = nextList(false);
+    if (!l) return [];
+    var act = activeZones(l);
+    return l.entries.filter(function (e) {
+      return e.status === 'take' && !e.checked && act.indexOf(e.zone) >= 0 && l.zones[e.zone].bagId === bagId;
+    });
+  }
+
+  function findEntry(id) { var l = nextList(false); return l ? { l: l, e: l.entries.find(function (x) { return x.id === id; }) } : null; }
+
+  // 打勾：清單上的項目收好了（放進行李）
+  function checkEntry(id) {
+    var f = findEntry(id);
+    if (!f || !f.e) return;
+    setChecked(f.l, f.e, true);
+    App.save();
+  }
+
+  // 取消打勾：從行李拿出來，但留在這趟的清單上（之後還要帶）
+  function uncheckItem(itemId) {
+    var l = nextList(true);
+    if (!l) return false;
+    var e = l.entries.find(function (x) { return x.itemId === itemId; });
+    if (!e) return false;   // 這個行李不在這趟的打包清單裡
+    setChecked(l, e, false);
+    App.save();
+    return true;
+  }
+
+  function zoneForBag(l, bagId) {
+    return activeZones(l).find(function (z) { return l.zones[z].bagId === bagId; }) || null;
+  }
+
+  // 已放進行李的東西換到別的行李
+  function moveItem(itemId, bagId) {
+    var it = st().items.find(function (x) { return x.id === itemId; });
+    if (!it) return;
+    it.bagId = bagId;
+    var m = it.catalogId && App.entryById(it.catalogId);
+    if (m) App.markPacked(m, bagId);
+    var l = nextList(false);
+    if (l) reconcile(l);
+    App.save();
+  }
+
+  // 清單上還沒收好的項目換到別的行李
+  function moveEntryTo(id, bagId) {
+    var f = findEntry(id);
+    if (!f || !f.e) return false;
+    var z = zoneForBag(f.l, bagId);
+    if (!z) return false;
+    moveEntry(f.l, f.e, z);
+    App.save();
+    return true;
+  }
+
+  // 拿出來：這趟不帶了
+  function takeOutItem(itemId) {
+    var l = nextList(false);
+    var e = l && l.entries.find(function (x) { return x.itemId === itemId; });
+    if (e) removeEntry(l, e);
+    else {
+      var it = st().items.find(function (x) { return x.id === itemId; });
+      st().items = st().items.filter(function (x) { return x.id !== itemId; });
+      var m = it && it.catalogId && App.entryById(it.catalogId);
+      if (m) App.restoreHome(m);
+    }
+    App.save();
+  }
+
+  function takeOutEntry(id) {
+    var f = findEntry(id);
+    if (!f || !f.e) return;
+    removeEntry(f.l, f.e);
+    App.save();
+  }
+
+  window.Packing = {
+    show: show, pendingByBag: pendingByBag, bagPending: bagPending, checkEntry: checkEntry, uncheckItem: uncheckItem,
+    moveItem: moveItem, moveEntryTo: moveEntryTo, takeOutItem: takeOutItem, takeOutEntry: takeOutEntry
+  };
 })();

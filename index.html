@@ -3,11 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#f3f4f6">
+  <meta name="theme-color" content="#FAF7F2">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="行李規劃">
   <title>行李規劃</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@300;400;600&display=swap">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -16,28 +19,45 @@
     <section id="view-home" class="view">
       <button type="button" id="cloud-pill" class="cloud-pill off" onclick="document.getElementById('cloud-card').scrollIntoView({behavior:'smooth'})">☁️ 未登入雲端</button>
       <div id="remain-card" class="remain-card">
+        <div class="eyebrow">REMAINING</div>
         <div class="remain-label">剩餘可購物公斤數</div>
         <div class="remain-value"><span id="remain-num">0.0</span><small> kg</small></div>
         <div id="remain-status" class="remain-status">充裕</div>
       </div>
 
-      <div id="next-trip" class="card next-trip"></div>
-      <div id="arrival-banner" class="card arrival-banner" hidden></div>
-
-      <div class="total-row">
-        <div>
-          <div class="muted">目前行李總重量</div>
-          <div class="total-value"><span id="total-num">0.0</span> kg</div>
-        </div>
-        <a id="limit-link" class="right limit-link" href="#trips">
-          <div class="muted">總上限 <span class="edit-hint" id="limit-link-text">修改額度</span></div>
-          <div class="total-value"><span id="limit-num">0</span> kg</div>
-        </a>
+      <div id="first-trip" class="first-trip" hidden>
+        <p>行李額度會自動讀取「行程」裡下一段航班的托運、手提、背包額度。</p>
+        <a class="btn primary first-trip-btn" href="#trips/new">＋ 先新增一趟旅程</a>
       </div>
 
-      <div id="bag-list"></div>
+      <div id="arrival-banner" class="card arrival-banner" hidden></div>
 
-      <div id="cloud-card" class="card cloud-card form">
+      <section id="allow-block" class="home-sec">
+        <div class="sec-head"><span class="eyebrow">ALLOWANCE</span><a id="limit-link" class="link small" href="#trips"><span id="limit-link-text">修改額度</span></a></div>
+        <div id="allow-line" class="allow-line"></div>
+        <div class="total-row">
+          <div><div class="muted small">目前行李總重量</div><div class="total-value"><span id="total-num">0.0</span> kg</div></div>
+          <div class="right"><div class="muted small">總上限</div><div class="total-value"><span id="limit-num">0</span> kg</div></div>
+        </div>
+      </section>
+
+      <section id="bags-block" class="home-sec">
+        <div class="sec-head"><span class="eyebrow">LUGGAGE</span><span class="sec-title">我的行李</span></div>
+        <div id="bag-list"></div>
+      </section>
+
+      <section class="home-sec">
+        <div class="sec-head"><span class="eyebrow">SHOPPING</span><span class="sec-title">回程購物</span></div>
+        <a class="row-link" href="#shop"><span>記一筆在旅途中買的東西</span><span class="muted small">即將推出 ›</span></a>
+      </section>
+
+      <section class="home-sec">
+        <div class="sec-head"><span class="eyebrow">NEXT TRIP</span><span class="sec-title">下一趟旅程</span></div>
+        <div id="next-trip" class="next-trip"></div>
+      </section>
+
+      <div id="cloud-card" class="home-sec cloud-card form">
+        <div class="sec-head"><span class="eyebrow">ACCOUNT</span></div>
         <div class="card-head"><span>備份與雲端同步</span></div>
         <p class="muted small">備份檔包含所有資料和照片，可以存到「檔案」App。接上雲端前，建議先備份一次。</p>
         <div class="cloud-btns">
@@ -52,7 +72,7 @@
 
     <!-- 放進行李 -->
     <section id="view-add" class="view" hidden>
-      <h1>放進行李</h1>
+      <h1 data-en="ADD TO LUGGAGE">放進行李</h1>
 
       <div id="closet-pick" class="card" hidden>
         <div class="card-head">
@@ -144,13 +164,19 @@
     <section id="view-trips" class="view" hidden>
       <div id="trip-list-view">
         <div class="page-head">
-          <h1>行程設定</h1>
+          <h1 data-en="TRIP">行程設定</h1>
           <a href="#trips/new" class="btn primary small-btn">＋ 新增旅程</a>
         </div>
         <div id="trip-mode" class="seg mode-seg">
           <button type="button" data-mode="list" class="on">列表</button>
           <button type="button" data-mode="month">月曆</button>
           <button type="button" data-mode="year">年度時間軸</button>
+        </div>
+
+        <div class="soon-row">
+          <span class="eyebrow">COMING SOON</span>
+          <button type="button" class="link small" data-soon="多人行程">多人行程</button>
+          <button type="button" class="link small" data-soon="每日穿搭">每日穿搭</button>
         </div>
 
         <div id="trip-view-list">
@@ -182,7 +208,7 @@
       <form id="trip-form" class="form" autocomplete="off" hidden>
         <div class="page-head">
           <a href="#trips" class="link back">‹ 行程</a>
-          <h1 id="tf-title">新增旅程</h1>
+          <h1 id="tf-title" data-en="TRIP">新增旅程</h1>
           <span class="back"></span>
         </div>
         <div class="card">
@@ -212,7 +238,7 @@
 
     <!-- 打包清單 -->
     <section id="view-pack" class="view" hidden>
-      <div class="page-head"><h1>打包清單</h1></div>
+      <div class="page-head"><h1 data-en="PACKING">打包清單</h1></div>
       <p id="pack-empty" class="empty-big" hidden>還沒有旅程。<br>先到「行程」新增一趟旅程，這裡就會自動產生打包清單。<br><a href="#trips/new" class="link">＋ 新增旅程</a></p>
 
       <div id="pack-main" hidden>
@@ -255,7 +281,8 @@
 
     <!-- 我的抽屜 -->
     <section id="view-drawer" class="view" hidden>
-      <div class="page-head"><h1>我的抽屜</h1></div>
+      <div class="home-switch"><a href="#closet">我的衣櫃</a><a href="#drawer" class="on">我的抽屜</a></div>
+      <div class="page-head"><h1 data-en="DRAWER">我的抽屜</h1></div>
       <div id="dr-tabs" class="tabs"></div>
 
       <form id="dr-add" class="card form dr-add" autocomplete="off">
@@ -291,11 +318,19 @@
       <div id="dr-list"></div>
     </section>
 
+    <!-- 回程購物（之後做） -->
+    <section id="view-shop" class="view" hidden>
+      <div class="page-head"><h1 data-en="SHOPPING">回程購物</h1></div>
+      <p class="soon-text">記錄旅途中買的東西、重量和要放進哪個行李，回程前就知道還能買多少。<br>這個功能即將推出。</p>
+      <a class="btn ghost" href="#home">回首頁</a>
+    </section>
+
     <!-- 我的衣櫃 -->
     <section id="view-closet" class="view" hidden>
       <div id="closet-list">
+        <div class="home-switch"><a href="#closet" class="on">我的衣櫃</a><a href="#drawer">我的抽屜</a></div>
         <div class="page-head">
-          <h1>我的衣櫃</h1>
+          <h1 data-en="WARDROBE">我的衣櫃</h1>
           <a href="#closet/new" class="btn primary small-btn">＋ 新增衣服</a>
         </div>
         <div id="closet-tabs" class="tabs"></div>
@@ -313,7 +348,7 @@
       <form id="closet-form" class="form" autocomplete="off" hidden>
         <div class="page-head">
           <a href="#closet" class="link back">‹ 衣櫃</a>
-          <h1 id="cf-title">新增衣服</h1>
+          <h1 id="cf-title" data-en="WARDROBE">新增衣服</h1>
           <span class="back"></span>
         </div>
 
@@ -374,25 +409,46 @@
   </main>
 
   <nav class="tabbar">
-    <a href="#home" data-view="home">
-      <svg class="ico" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9v11a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9"/></svg><span>首頁</span>
+    <a href="#home" data-views="home shop">
+      <svg class="ico" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 10.5 12 3.5l8.5 7"/><path d="M5.5 9v11h13V9"/><path d="M10 20v-5.5h4V20"/></svg><span>首頁</span>
     </a>
-    <a href="#add" data-view="add">
-      <svg class="ico" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v9"/><path d="M8.5 7.5 12 11l3.5-3.5"/><path d="M8 9H5.5L3 13v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6l-2.5-4H16"/><path d="M3 13h5l1 2h6l1-2h5"/></svg><span>放進行李</span>
+    <a href="#trips" data-views="trips">
+      <svg class="ico" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="1"/><path d="M3.5 9.5h17"/><path d="M8 3v4"/><path d="M16 3v4"/><path d="M7.5 13.5h3"/><path d="M7.5 16.5h6"/></svg><span>行程</span>
     </a>
-    <a href="#pack" data-view="pack">
-      <svg class="ico" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="m8.5 11 1.5 1.5 3-3"/><path d="M8.5 16.5h7"/></svg><span>打包</span>
+    <button type="button" id="plus-btn" class="plus-btn" aria-label="新增" aria-haspopup="dialog">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+    </button>
+    <a href="#pack" data-views="pack add">
+      <svg class="ico" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="7" width="14" height="13.5" rx="1"/><path d="M9 7V4.5h6V7"/><path d="M9 11.5h6"/><path d="M8.5 20.5v1"/><path d="M15.5 20.5v1"/></svg><span>打包</span>
     </a>
-    <a href="#trips" data-view="trips">
-      <svg class="ico" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg><span>行程</span>
-    </a>
-    <a href="#closet" data-view="closet">
-      <svg class="ico" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7.5V7a2 2 0 1 0-2-2"/><path d="M12 7.5 3 15a1.6 1.6 0 0 0 1 3h16a1.6 1.6 0 0 0 1-3z"/></svg><span>我的衣櫃</span>
-    </a>
-    <a href="#drawer" data-view="drawer">
-      <svg class="ico" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 12h16"/><path d="M10 7.5h4"/><path d="M10 16.5h4"/></svg><span>我的抽屜</span>
+    <a href="#closet" data-views="closet drawer">
+      <svg class="ico" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="3.5" width="15" height="17" rx="1"/><path d="M12 3.5v17"/><path d="M10 11v2"/><path d="M14 11v2"/></svg><span>我的家</span>
     </a>
   </nav>
+
+  <!-- 「＋」選單 -->
+  <div id="plus-sheet" class="sheet plus-sheet" hidden>
+    <div class="sheet-panel plus-panel" role="dialog" aria-modal="true" aria-label="新增">
+      <div class="eyebrow center">ADD</div>
+      <a class="plus-item" href="#add"><span>放進行李</span><span class="muted small">把東西放進這趟的行李箱</span></a>
+      <a class="plus-item" href="#closet/new"><span>新增衣服</span><span class="muted small">拍照、選類別，放進衣櫃</span></a>
+      <a class="plus-item" href="#drawer" data-focus="dr-name"><span>新增抽屜物品</span><span class="muted small">衣服以外的東西</span></a>
+      <a class="plus-item" href="#shop"><span>記一筆購物</span><span class="muted small">即將推出</span></a>
+      <button type="button" id="plus-close" class="btn ghost">取消</button>
+    </div>
+  </div>
+
+  <!-- 首頁：放進更多東西 -->
+  <div id="more-sheet" class="sheet" hidden>
+    <div class="sheet-panel org-panel" role="dialog" aria-modal="true">
+      <div id="more-title" class="sheet-title">放進更多東西</div>
+      <div class="home-switch more-switch"><button type="button" data-more-tab="closet" class="on">衣櫃</button><button type="button" data-more-tab="drawer">抽屜</button></div>
+      <input id="more-search" class="more-search" placeholder="搜尋名稱" autocomplete="off">
+      <div id="more-list"></div>
+      <a class="link small more-add-link" href="#add">找不到？到「放進行李」新增 ›</a>
+      <button type="button" id="more-close" class="btn primary">完成</button>
+    </div>
+  </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
@@ -550,6 +606,7 @@
   <script src="organize.js"></script>
   <script src="packing.js"></script>
   <script src="drawer.js"></script>
+  <script src="nav.js"></script>
   <script src="backup.js"></script>
   <script src="vendor/supabase.js"></script>
   <script src="cloud.js"></script>

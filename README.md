@@ -58,6 +58,14 @@ https://mop0723-ai.github.io/luggage-app/
 2. Authentication → Sign In / Providers：確認 Email 已開啟。
 3. Authentication → URL Configuration：Site URL 設為 `https://mop0723-ai.github.io/luggage-app/`。
 
+## 介面
+
+- 風格：米白底（#FAF7F2）＋深海軍藍（#0B1F3A）文字，香檳金（#C9A45C）只用在剩餘公斤數與中間的「＋」；
+  標題用思源宋體、內文用思源黑體（Google Fonts，離線時改用系統字體）；細線分隔、不用色塊與陰影。
+- 底部導覽五格：首頁／行程／「＋」（放進行李、新增衣服、新增抽屜物品、記一筆購物）／打包（含放進行李頁）／
+  我的家（我的衣櫃、我的抽屜）（`nav.js`）。
+- 首頁「我的行李」：每個行李一行，點開依品類列出物品，可打勾、移到別的行李、拿出來、放進更多東西。
+
 ## 資料結構
 
 說明寫在 `app.js` 開頭。重點：
