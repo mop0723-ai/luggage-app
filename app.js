@@ -1224,7 +1224,18 @@
   // 讓 app 沒有網路時也能打開
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {
-      navigator.serviceWorker.register('sw.js').catch(function () { /* 不支援就算了 */ });
+      // updateViaCache: 'none'：檢查 app 有沒有新版時，不用瀏覽器暫存的舊檔
+      navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(function (reg) {
+        reg.update().catch(function () {});
+      }).catch(function () { /* 不支援就算了 */ });
+      // 新版接手後自動重新載入一次，畫面就會是最新版
+      var hadController = !!navigator.serviceWorker.controller;
+      var reloaded = false;
+      navigator.serviceWorker.addEventListener('controllerchange', function () {
+        if (!hadController || reloaded) return;
+        reloaded = true;
+        location.reload();
+      });
     });
   }
 })();

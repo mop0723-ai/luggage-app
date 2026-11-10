@@ -3,7 +3,7 @@
  * 有網路時一律抓最新版（同時更新快取）；沒網路時改用快取。
  * 只處理自己網站的檔案，Supabase 等外部連線不經過這裡。
  */
-var CACHE = 'luggage-app-v2';
+var CACHE = 'luggage-app-v3';
 var ASSETS = [
   './', 'index.html', 'style.css', 'weights.js', 'photos.js', 'clothing.js', 'app.js',
   'closet.js', 'trips.js', 'organize.js', 'packing.js', 'drawer.js', 'nav.js', 'backup.js', 'cloud.js', 'vendor/supabase.js'
@@ -25,7 +25,8 @@ self.addEventListener('fetch', function (e) {
   var url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
   e.respondWith(
-    fetch(req).then(function (res) {
+    // no-cache：每次都向伺服器確認有沒有新版（沒變就用暫存，不會多花流量）
+    fetch(req, { cache: 'no-cache' }).then(function (res) {
       if (res && res.ok) {
         var copy = res.clone();
         caches.open(CACHE).then(function (c) { c.put(req, copy); });
