@@ -45,6 +45,14 @@
     <section id="view-add" class="view" hidden>
       <h1>放進行李</h1>
 
+      <div id="closet-pick" class="card" hidden>
+        <div class="card-head">
+          <span>從衣櫃挑</span>
+          <a href="#closet" class="link">看全部衣櫃</a>
+        </div>
+        <div id="closet-pick-list" class="pick-strip"></div>
+      </div>
+
       <div id="memory-box" class="card">
         <div class="card-head">
           <span>常帶物品</span>
@@ -130,6 +138,7 @@
         </div>
         <div id="closet-tabs" class="tabs"></div>
         <div class="filters">
+          <div class="filter-row"><span class="filter-label">家</span><div id="closet-f-home" class="chips filter"></div></div>
           <div class="filter-row"><span class="filter-label">顏色</span><div id="closet-f-color" class="chips filter"></div></div>
           <div class="filter-row"><span class="filter-label">季節</span><div id="closet-f-season" class="chips filter"></div></div>
           <div class="filter-row"><span class="filter-label">風格</span><div id="closet-f-style" class="chips filter"></div></div>
@@ -200,6 +209,15 @@
   </nav>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- 選擇要放進哪個行李 -->
+  <div id="bag-sheet" class="sheet" hidden>
+    <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="bag-sheet-title">
+      <div id="bag-sheet-title" class="sheet-title">放進哪個行李？</div>
+      <div id="bag-sheet-list" class="sheet-list"></div>
+      <button type="button" id="bag-sheet-cancel" class="btn ghost">取消</button>
+    </div>
+  </div>
 
   <script src="weights.js"></script>
   <script src="photos.js"></script>

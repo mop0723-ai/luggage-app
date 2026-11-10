@@ -39,11 +39,13 @@
    *            ai }                預留：AI 辨識結果 { colors, pattern, group, type, confidence, model, at }
    * outfits 預留：模擬穿搭 { id, date, place, weather, parts: { top, bottom, full, outer, shoes, accessory[] } }
    * sync    預留：雲端帳號 { userId, lastSyncedAt }
+   * homes   「家」的清單，衣服標籤的 clothing.home 會是其中之一
    * legacyWardrobe 上一版衣櫃的原始資料，留著備份
    *
    * 照片本身存在 IndexedDB（見 photos.js），不放在 localStorage。
    */
   var SCHEMA_VERSION = 2;
+  var DEFAULT_HOMES = ['曼谷', '台灣', '昆明'];
 
   function defaultState() {
     return {
@@ -55,6 +57,7 @@
       items: [],
       memory: [],
       outfits: [],
+      homes: DEFAULT_HOMES.slice(),
       sync: { userId: null, lastSyncedAt: null }
     };
   }
@@ -113,6 +116,7 @@
     });
 
     if (!Array.isArray(s.outfits)) s.outfits = [];
+    if (!Array.isArray(s.homes)) s.homes = DEFAULT_HOMES.slice();
     if (!s.sync) s.sync = { userId: null, lastSyncedAt: null };
     s.schemaVersion = SCHEMA_VERSION;
     return s;
@@ -401,8 +405,42 @@
     return out;
   }
 
+  // ---------- 家 ----------
+  function homes() { return state.homes; }
+  function addHome(name) {
+    if (state.homes.indexOf(name) < 0) { state.homes.push(name); save(); }
+  }
+
+  // ---------- 衣櫃與行李共用：打包 ----------
+  function isCloth(m) { return !!(m && m.clothing && m.clothing.group); }
+
+  function packedItem(m) {
+    return state.items.find(function (it) { return it.catalogId === m.id; });
+  }
+
+  // 把一件常帶物品（例如衣櫃裡的衣服）放進指定的行李
+  function packEntry(m, bagId) {
+    var item = {
+      id: uid(), name: m.name, weight: m.weight, qty: 1, unit: m.unit || '個',
+      category: m.category || '必備品', bagId: bagId, catalogId: m.id
+    };
+    state.items.push(item);
+    m.bagId = bagId;
+    m.uses = (m.uses || 0) + 1;
+    save();
+    return item;
+  }
+
+  // 從行李拿出來（同一件放了好幾次，就全部拿出來）
+  function unpackEntry(m) {
+    state.items = state.items.filter(function (it) { return it.catalogId !== m.id; });
+    save();
+  }
+
   var picker = Clothing.createPicker($('#f-tags'), {
     brands: allBrands,
+    homes: homes,
+    addHome: addHome,
     onChange: function (tags, key) {
       tagsTouched = true;
       if (key === 'group' || key === 'type') {
@@ -495,7 +533,8 @@
   }
 
   function renderMemory() {
-    var list = state.memory.slice().sort(function (a, b) {
+    renderClosetPick();
+    var list = state.memory.filter(function (m) { return !isCloth(m); }).sort(function (a, b) {
       return (b.uses || 0) - (a.uses || 0) || (b.updatedAt || 0) - (a.updatedAt || 0);
     });
     $('#memory-list').innerHTML = list.map(function (m) {
@@ -506,7 +545,7 @@
         '</small><span class="x">✕</span></button>';
     }).join('');
     Photos.fillThumbs($('#memory-list'));
-    $('#memory-empty').hidden = list.length > 0;
+    $('#memory-empty').hidden = state.memory.length > 0;
     $('#toggle-manage').hidden = list.length === 0;
     if (!list.length) managing = false;
     $('#memory-box').classList.toggle('managing', managing);
@@ -521,6 +560,40 @@
       return '<option value="' + esc(n) + '">';
     }).join('');
   }
+
+  // 「從衣櫃挑」：顯示衣櫃裡每件衣服的小照片，點了就帶入表單
+  function renderClosetPick() {
+    var list = state.memory.filter(isCloth).sort(function (a, b) {
+      return (b.createdAt || 0) - (a.createdAt || 0);
+    });
+    $('#closet-pick').hidden = !list.length;
+    $('#closet-pick-list').innerHTML = list.map(function (m) {
+      var c = m.clothing;
+      var packed = packedItem(m);
+      return '<button type="button" class="pick-tile' + (m.id === selectedId ? ' on' : '') + '" data-pick="' + esc(m.id) + '">' +
+        '<span class="pick-ph">' + (m.photoId ? '<img data-photo="' + esc(m.photoId) + '" alt="">' : '') +
+        (packed ? '<span class="packed">已打包</span>' : '') + '</span>' +
+        '<span class="pick-name">' + esc(m.name) + '</span>' +
+        '<span class="pick-home">' + (c.home ? '📍' + esc(c.home) : '&nbsp;') + '</span>' +
+        '</button>';
+    }).join('');
+    Photos.fillThumbs($('#closet-pick-list'));
+  }
+
+  $('#closet-pick-list').addEventListener('click', function (e) {
+    var tile = e.target.closest('[data-pick]');
+    if (!tile) return;
+    var m = entryById(tile.getAttribute('data-pick'));
+    if (!m) return;
+    if (selectedId === m.id) { deselect(); renderMemory(); return; }
+    var packed = packedItem(m);
+    if (packed) {
+      var bag = bagById(packed.bagId);
+      if (!confirm('「' + m.name + '」已經打包在' + (bag ? bag.name : '行李') + '，還要再放一次嗎？')) return;
+    }
+    applyMemory(m);
+    toast('已從衣櫃帶入「' + m.name + '」，確認後按「加入行李」');
+  });
 
   // 用名稱找一般物品（有照片或衣服標籤的每件都是獨立的，不用名稱合併）
   function findMemory(name) {
@@ -748,7 +821,13 @@
     normalizeEntry: normalizeEntry,
     entryById: entryById,
     allBrands: allBrands,
-    dropPhotoIfUnused: dropPhotoIfUnused
+    dropPhotoIfUnused: dropPhotoIfUnused,
+    homes: homes,
+    addHome: addHome,
+    isCloth: isCloth,
+    packedItem: packedItem,
+    packEntry: packEntry,
+    unpackEntry: unpackEntry
   };
 
   window.addEventListener('hashchange', route);

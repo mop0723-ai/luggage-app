@@ -16,8 +16,11 @@
   function clothes() { return st().memory.filter(isCloth); }
   function shortGroup(name) { return name.split('／')[0]; }
 
-  function packedItem(m) {
-    return st().items.find(function (it) { return it.catalogId === m.id; });
+  function packedItem(m) { return App.packedItem(m); }
+
+  function bagName(id) {
+    var b = st().bags.find(function (x) { return x.id === id; });
+    return b ? b.name : '行李';
   }
 
   function refWeight(tags) {
@@ -27,7 +30,7 @@
 
   // ---------- 衣櫃列表 ----------
   var tab = '';
-  var fColor = '', fSeason = '', fStyle = '';
+  var fHome = '', fColor = '', fSeason = '', fStyle = '';
 
   function chipRow(values, current, attr, allLabel, withSwatch) {
     return [''].concat(values).map(function (v) {
@@ -49,10 +52,16 @@
     $('#closet-f-color').innerHTML = chipRow(C.COLORS, fColor, 'data-fcolor', '全部', true);
     $('#closet-f-season').innerHTML = chipRow(C.SEASONS, fSeason, 'data-fseason', '全部');
     $('#closet-f-style').innerHTML = chipRow(C.STYLES, fStyle, 'data-fstyle', '全部');
+    // 家：清單裡的每個家；有衣服還沒設定家的話，多一個「未設定」
+    var homeOpts = App.homes().slice();
+    if (all.some(function (m) { return !m.clothing.home; })) homeOpts.push('未設定');
+    if (fHome && homeOpts.indexOf(fHome) < 0) fHome = '';
+    $('#closet-f-home').innerHTML = chipRow(homeOpts, fHome, 'data-fhome', '全部');
 
     var list = all.filter(function (m) {
       var c = m.clothing;
       return (!tab || c.group === tab) &&
+        (!fHome || (fHome === '未設定' ? !c.home : c.home === fHome)) &&
         (!fColor || (c.colors || []).indexOf(fColor) >= 0) &&
         (!fSeason || (c.seasons || []).indexOf(fSeason) >= 0) &&
         (!fStyle || (c.styles || []).indexOf(fStyle) >= 0);
@@ -60,15 +69,20 @@
 
     $('#closet-grid').innerHTML = list.length ? list.map(function (m) {
       var c = m.clothing;
-      return '<a class="cloth" href="#closet/' + encodeURIComponent(m.id) + '">' +
+      var packed = packedItem(m);
+      return '<div class="cloth"><a class="cloth-link" href="#closet/' + encodeURIComponent(m.id) + '">' +
         '<div class="ph">' + (m.photoId ? '<img data-photo="' + esc(m.photoId) + '" alt="' + esc(m.name) + '">' : '') +
-        (packedItem(m) ? '<span class="packed">已放進行李</span>' : '') + '</div>' +
+        (packed ? '<span class="packed">已打包</span>' : '') + '</div>' +
         '<div class="meta"><span class="t">' + esc(m.name) + '</span><span class="dots">' +
         (c.colors || []).map(function (n) {
           return '<i style="background:' + C.colorHex(n) + '" title="' + esc(n) + '"></i>';
         }).join('') + '</span></div>' +
         '<div class="brand">' + esc([C.typeName(c) !== m.name ? C.typeName(c) : '', c.brand].filter(Boolean).join('・')) + '&nbsp;</div>' +
-        '</a>';
+        '<div class="home">' + (c.home ? '📍 ' + esc(c.home) : '<span class="muted">📍 未設定家</span>') + '</div>' +
+        '</a>' +
+        '<button type="button" class="cloth-pack' + (packed ? ' done' : '') + '" data-pack="' + esc(m.id) + '">' +
+        (packed ? '✓ 已打包・' + esc(bagName(packed.bagId)) : '放進行李') + '</button>' +
+        '</div>';
     }).join('') : (all.length ? '<p class="empty">沒有符合的衣服</p>' : '');
     Photos.fillThumbs($('#closet-grid'));
 
@@ -83,13 +97,61 @@
   }
 
   $('#closet-list').addEventListener('click', function (e) {
-    var b = e.target.closest('[data-tab],[data-fcolor],[data-fseason],[data-fstyle]');
+    var pk = e.target.closest('[data-pack]');
+    if (pk) { onPackButton(App.entryById(pk.getAttribute('data-pack'))); return; }
+    var b = e.target.closest('[data-tab],[data-fhome],[data-fcolor],[data-fseason],[data-fstyle]');
     if (!b) return;
+    if (b.hasAttribute('data-fhome')) fHome = b.getAttribute('data-fhome');
     if (b.hasAttribute('data-tab')) tab = b.getAttribute('data-tab');
     if (b.hasAttribute('data-fcolor')) fColor = b.getAttribute('data-fcolor');
     if (b.hasAttribute('data-fseason')) fSeason = b.getAttribute('data-fseason');
     if (b.hasAttribute('data-fstyle')) fStyle = b.getAttribute('data-fstyle');
     renderList();
+  });
+
+  // ---------- 卡片上的「放進行李」 ----------
+  var sheetEntry = null;
+
+  function onPackButton(m) {
+    if (!m) return;
+    var item = packedItem(m);
+    if (item) {
+      if (confirm('「' + m.name + '」已打包在' + bagName(item.bagId) + '。\n要從行李拿出來嗎？')) {
+        App.unpackEntry(m);
+        App.toast('已從行李拿出來：' + m.name);
+        renderList();
+      }
+      return;
+    }
+    openBagSheet(m);
+  }
+
+  function openBagSheet(m) {
+    sheetEntry = m;
+    $('#bag-sheet-title').textContent = '「' + m.name + '」放進哪個行李？';
+    $('#bag-sheet-list').innerHTML = st().bags.map(function (b) {
+      return '<button type="button" class="btn sheet-bag" data-bag="' + esc(b.id) + '">' + esc(b.name) + '</button>';
+    }).join('');
+    $('#bag-sheet').hidden = false;
+  }
+
+  function closeBagSheet() {
+    $('#bag-sheet').hidden = true;
+    sheetEntry = null;
+  }
+
+  $('#bag-sheet').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-bag]');
+    if (b && sheetEntry) {
+      var m = sheetEntry;
+      App.packEntry(m, b.getAttribute('data-bag'));
+      App.toast('已放進' + bagName(b.getAttribute('data-bag')) + '：' + m.name);
+      closeBagSheet();
+      renderList();
+      return;
+    }
+    // 點「取消」或視窗外面就關掉
+    if (e.target.id === 'bag-sheet' || e.target.id === 'bag-sheet-cancel') closeBagSheet();
   });
 
   // ---------- 新增／編輯衣服 ----------
@@ -101,6 +163,8 @@
 
   var picker = C.createPicker($('#cf-tags'), {
     brands: App.allBrands,
+    homes: App.homes,
+    addHome: App.addHome,
     onChange: function (tags, key) {
       if (key !== 'group' && key !== 'type') return;
       var tn = C.typeName(tags);
@@ -237,23 +301,14 @@
   $('#cf-pack').addEventListener('click', function () {
     var m = App.entryById(editing);
     if (!m) return;
-    var s = st();
-    var item = packedItem(m);
-    if (item) {
-      s.items = s.items.filter(function (it) { return it !== item; });
+    if (packedItem(m)) {
+      App.unpackEntry(m);
       App.toast('已從行李拿出來');
     } else {
       var bagId = $('#cf-bag').value;
-      s.items.push({
-        id: App.uid(), name: m.name, weight: m.weight, qty: 1, unit: m.unit || '個',
-        category: m.category || '必備品', bagId: bagId, catalogId: m.id
-      });
-      m.bagId = bagId;
-      m.uses = (m.uses || 0) + 1;
-      var bag = s.bags.find(function (b) { return b.id === bagId; });
-      App.toast('已放進' + (bag ? bag.name : '行李') + '：' + m.name);
+      App.packEntry(m, bagId);
+      App.toast('已放進' + bagName(bagId) + '：' + m.name);
     }
-    App.save();
     renderPack();
   });
 

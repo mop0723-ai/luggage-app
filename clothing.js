@@ -2,7 +2,8 @@
  * 衣服、鞋子、配件的標籤：選項清單＋點選元件
  *
  * 標籤資料（存在物品的 clothing 欄位）：
- *   { group, type, part, colors[], pattern, seasons[], styles[], brand }
+ *   { group, type, part, home, colors[], pattern, seasons[], styles[], brand }
+ *   - home：放在哪個家（例如曼谷、台灣、昆明），清單存在 state.homes
  *   - group：大類（上衣、下身、洋裝／連身、外套、鞋子、配件）
  *   - type：細項（例如襯衫）；洋裝／連身沒有細項
  *   - part：穿搭部位，給之後的「模擬穿搭」用
@@ -39,7 +40,7 @@
   }
 
   function empty() {
-    return { group: '', type: '', part: '', colors: [], pattern: '', seasons: [], styles: [], brand: '' };
+    return { group: '', type: '', part: '', home: '', colors: [], pattern: '', seasons: [], styles: [], brand: '' };
   }
 
   // 有選大類才算「有標籤」
@@ -117,6 +118,7 @@
    * 在 el 裡建立標籤點選區。
    * opts.onChange(tags, key)：任何標籤改變時呼叫
    * opts.brands()：回傳品牌建議清單
+   * opts.homes()：回傳「家」的清單；opts.addHome(name)：新增一個家
    */
   function createPicker(el, opts) {
     var tags = empty();
@@ -126,6 +128,8 @@
       '<div class="field-title">衣服種類</div>' +
       '<div class="chips pick" data-k="group"></div>' +
       '<div class="sub-types" data-sub hidden><div class="chips pick" data-k="type"></div></div>' +
+      '<div class="field-title">放在哪個家</div>' +
+      '<div class="chips pick" data-k="home"></div>' +
       '<div class="field-title">顏色 <span class="muted small">可複選</span></div>' +
       '<div class="chips pick" data-k="colors" data-many></div>' +
       '<div class="field-title">花紋</div>' +
@@ -144,6 +148,9 @@
       q('[data-k="group"]').innerHTML = chips(GROUPS, tags.group);
       q('[data-sub]').hidden = !(g && g.types.length);
       q('[data-k="type"]').innerHTML = g ? chips(g.types, tags.type) : '';
+      var homes = opts && opts.homes ? opts.homes() : [];
+      q('[data-k="home"]').innerHTML = chips(homes, tags.home) +
+        '<button type="button" class="chip add-chip" data-add-home>＋ 新增</button>';
       q('[data-k="colors"]').innerHTML = chips(COLORS, tags.colors, 'color');
       q('[data-k="pattern"]').innerHTML = chips(PATTERNS, tags.pattern);
       q('[data-k="seasons"]').innerHTML = chips(SEASONS, tags.seasons);
@@ -154,6 +161,16 @@
     }
 
     el.addEventListener('click', function (e) {
+      if (e.target.closest('[data-add-home]')) {
+        var n = (prompt('新增一個家（例如：東京）') || '').trim().slice(0, 20);
+        if (n && opts && opts.addHome) {
+          opts.addHome(n);
+          tags.home = n;
+          render();
+          if (opts.onChange) opts.onChange(tags, 'home');
+        }
+        return;
+      }
       var chip = e.target.closest('.pick [data-v]');
       if (!chip) return;
       var box = chip.parentElement;
