@@ -3,7 +3,8 @@
  *
  * IndexedDB 資料庫 luggage-photos／photos，以照片 id 為鍵。
  * 每筆內容：{ blob, width, height, size, createdAt, cloudUrl }
- *   - cloudUrl：預留給之後的雲端儲存，上傳後記下網址
+ *   - cloudUrl：已上傳到雲端時記下位置（'item-photos/<帳號 id>/<照片 id>.jpg'）；
+ *     這裡是照片的本機暫存，讓衣櫃打開快、沒網路也看得到
  * 上一版存的是單純的 Blob，讀取時兩種格式都支援。
  */
 (function () {

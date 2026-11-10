@@ -47,7 +47,8 @@ https://mop0723-ai.github.io/luggage-app/
 
 ## Supabase 設定
 
-1. 在 Supabase 的 SQL Editor 執行 `supabase/setup.sql`（建立資料表、照片空間與 RLS 規則，可重複執行）。
+1. 在 Supabase 的 SQL Editor 執行 `supabase/setup.sql`（建立資料表與 RLS 規則，可重複執行）。
+   再執行 `supabase/item-photos.sql`（建立私人照片空間 item-photos 與安全規則）。
 2. Authentication → Sign In / Providers：確認 Email 已開啟。
 3. Authentication → URL Configuration：Site URL 設為 `https://mop0723-ai.github.io/luggage-app/`。
 

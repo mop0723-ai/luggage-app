@@ -34,7 +34,8 @@
    *          catalogId：對應到 memory 裡的哪一件（用來顯示照片）
    * memory 常帶物品＝我擁有的東西，「我的衣櫃」也是從這裡來：
    *          { id, name, weight, unit, category, bagId, uses, estimated,
-   *            photoId,   照片在 IndexedDB 的 id，沒有照片是 null
+   *            photoId,   照片的 id（iPad 上的暫存用這個 id），沒有照片是 null
+   *            photoPath, 照片在 Supabase Storage 的路徑：item-photos 裡的 <帳號 id>/<照片 id>.jpg（登入同步後才有）
    *            clothing,  衣服標籤，不是衣服是 null（格式見 clothing.js）
    *            createdAt, updatedAt,
    *            cloudId, syncedAt,  預留：雲端儲存
@@ -120,6 +121,7 @@
   function normalizeEntry(m) {
     if (!m.id) m.id = uid();
     if (m.photoId === undefined) m.photoId = null;
+    if (m.photoPath === undefined) m.photoPath = null;
     if (m.clothing === undefined) m.clothing = null;
     if (!m.createdAt) m.createdAt = Date.now();
     if (!m.updatedAt) m.updatedAt = m.createdAt;
@@ -189,6 +191,11 @@
     catch (e) { toast('無法儲存（瀏覽器可能在私密模式）'); }
     // 有登入雲端的話，稍後自動同步
     if (window.Cloud) window.Cloud.schedule();
+  }
+
+  // 存檔但不觸發同步（雲端同步自己用）
+  function saveQuiet() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { /* 下次再存 */ }
   }
 
   // 雲端合併後套用到這台裝置（不會再觸發同步）
@@ -909,6 +916,8 @@
     if (!photoId) return;
     if (state.memory.some(function (m) { return m.photoId === photoId; })) return;
     Photos.del(photoId).catch(function () {});
+    // 雲端的照片也一起刪掉（沒網路時等有網路再刪）
+    if (window.Cloud) window.Cloud.queueDelete(photoId);
   }
 
   $('#memory-list').addEventListener('click', function (e) {
@@ -1075,6 +1084,7 @@
 
   // 給衣櫃（closet.js）使用的共用功能
   window.App = {
+    saveQuiet: saveQuiet,
     replaceState: replaceState,
     refreshView: refreshView,
     state: function () { return state; },

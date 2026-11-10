@@ -30,7 +30,8 @@ create policy "own state update" on public.app_state
 create policy "own state delete" on public.app_state
   for delete to authenticated using ((select auth.uid()) = user_id);
 
--- 2. 照片：私人的 photos 空間，每個人只能存取「自己 id」資料夾裡的照片
+-- 2. 照片（上一版）：私人的 photos 空間。新版改用 item-photos（見 item-photos.sql），
+--    app 會自動把這裡的照片搬過去，所以這段規則先保留，讓搬家時讀得到、刪得掉舊照片。
 insert into storage.buckets (id, name, public)
 values ('photos', 'photos', false)
 on conflict (id) do nothing;
@@ -53,3 +54,5 @@ create policy "own photos update" on storage.objects
 create policy "own photos delete" on storage.objects
   for delete to authenticated
   using (bucket_id = 'photos' and (storage.foldername(name))[1] = (select auth.uid())::text);
+
+-- 3. 新版照片空間 item-photos：請另外執行 supabase/item-photos.sql

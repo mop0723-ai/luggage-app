@@ -2,7 +2,8 @@
  * 雲端：Supabase 登入與同步
  *
  * - 資料先存在這台裝置（localStorage／IndexedDB），有網路時再和雲端同步，所以沒網路也能用。
- * - 雲端資料表 app_state：每個帳號一筆 { user_id, data, version }；照片放 Storage 的 photos／<帳號 id>／<照片 id>.jpg
+ * - 雲端資料表 app_state：每個帳號一筆 { user_id, data, version }；data 裡只存照片路徑（photoPath），
+ *   照片本身放 Storage 的 item-photos／<帳號 id>／<照片 id>.jpg（上一版的 photos 空間會自動搬過來）
  * - 每個人只能讀寫自己的資料，由 Supabase 的 Row Level Security 保護（設定見 supabase/setup.sql）。
  * - 兩台裝置都改過時，以「上次同步的內容」為基準逐筆合併：
  *     只有一邊改 → 用改過的；兩邊都新增 → 都保留；一邊刪掉、另一邊沒動 → 刪除；兩邊改同一筆 → 用較新的。
@@ -15,7 +16,9 @@
   var SUPABASE_URL = 'https://yzdpaczdtwdtmqurreut.supabase.co';
   var SUPABASE_KEY = 'sb_publishable_k68Sm2jBOEYfi4OCKfmFRQ_MYzs7x_4';
   var META_KEY = 'luggage-cloud-v1';   // { userId, version, base（上次同步的資料，JSON 字串）}
-  var BUCKET = 'photos';
+  var BUCKET = 'item-photos';      // 照片放這裡：item-photos／<帳號 id>／<照片 id>.jpg
+  var OLD_BUCKET = 'photos';       // 上一版用的空間：照片搬到 item-photos 並確認後就刪掉
+  var DEL_KEY = 'luggage-photo-deletes';   // 等有網路時要從雲端刪掉的照片（照片 id）
 
   var App = window.App;
   var $ = function (sel) { return document.querySelector(sel); };
@@ -51,7 +54,7 @@
     if (code === '42P01' || code === 'PGRST205' || /app_state/.test(m) && /not exist|schema cache/i.test(m)) {
       return '雲端資料表還沒建立，請先在 Supabase 執行設定 SQL';
     }
-    if (/Bucket not found/i.test(m)) return '照片空間還沒建立，請先在 Supabase 執行設定 SQL';
+    if (/Bucket not found/i.test(m)) return '照片空間 item-photos 還沒建立，請先在 Supabase 執行照片設定 SQL';
     if (/row-level security|violates/i.test(m)) return '雲端權限設定不正確，請重新執行設定 SQL';
     if (/Failed to fetch|NetworkError|Load failed|network/i.test(m)) return '連不上雲端，有網路後會自動再試';
     return m || '發生錯誤';
@@ -120,45 +123,119 @@
   }
 
   // ---------- 照片 ----------
-  function photoIds() {
-    var ids = [];
-    App.state().memory.forEach(function (m) { if (m.photoId && ids.indexOf(m.photoId) < 0) ids.push(m.photoId); });
-    return ids;
+  // app_state 裡每件物品只存照片的路徑（photoPath）；照片本身在 Storage，
+  // iPad 上另外在 IndexedDB 留一份暫存（打開快、沒網路也看得到）。
+  function pathFor(uid, id) { return uid + '/' + id + '.jpg'; }
+  function tagFor(path) { return BUCKET + '/' + path; }   // 暫存裡記下「已在新空間」
+  function withPhoto() { return App.state().memory.filter(function (m) { return m.photoId; }); }
+
+  // 確認照片真的在雲端、而且大小正確
+  function verify(path, size) {
+    var folder = path.split('/')[0], name = path.split('/').slice(1).join('/');
+    return client.storage.from(BUCKET).list(folder, { search: name, limit: 100 }).then(function (res) {
+      if (res.error) throw res.error;
+      var f = (res.data || []).find(function (x) { return x.name === name; });
+      if (!f) throw new Error('照片上傳後在雲端找不到，下次再試');
+      var sz = f.metadata && (f.metadata.size != null ? f.metadata.size : f.metadata.contentLength);
+      if (sz != null && size != null && Number(sz) !== Number(size)) throw new Error('照片大小不符，下次再試');
+    });
   }
 
+  function removeOld(paths) {
+    return client.storage.from(OLD_BUCKET).remove(paths).then(function () {}, function () {});
+  }
+
+  // 上傳新照片，並把舊空間（photos）的照片搬到 item-photos：上傳 → 確認 → 才刪舊的
   function uploadPhotos(uid) {
-    return photoIds().reduce(function (chain, id) {
+    var changed = false, n = 0;
+    App.state().memory.forEach(function (m) {
+      if (!m.photoId && m.photoPath) { m.photoPath = null; changed = true; }
+    });
+    return withPhoto().reduce(function (chain, m) {
       return chain.then(function () {
+        var id = m.photoId, path = pathFor(uid, id);
         return Photos.get(id).then(function (p) {
-          var path = uid + '/' + id + '.jpg';
-          if (!p || !p.blob || p.cloudUrl === path) return;
-          return client.storage.from(BUCKET).upload(path, p.blob, {
-            upsert: true, contentType: p.blob.type || 'image/jpeg', cacheControl: '31536000'
-          }).then(function (res) {
-            if (res.error) throw res.error;
-            p.cloudUrl = path;
-            return Photos.put(id, p);
+          if (p && p.blob && p.cloudUrl === tagFor(path)) {
+            if (m.photoPath !== path) { m.photoPath = path; changed = true; }
+            return;
+          }
+          // 本機沒有照片：看看舊空間有沒有（例如這台還沒下載過）
+          var source = p && p.blob ? Promise.resolve(p) :
+            client.storage.from(OLD_BUCKET).download(path).then(function (r) {
+              return r.error || !r.data ? null : { blob: r.data, size: r.data.size, createdAt: Date.now() };
+            }, function () { return null; });
+          return source.then(function (rec) {
+            if (!rec) return;   // 兩邊都沒有：可能已經在新空間，等一下的下載會處理
+            n++;
+            setStatus('syncing', '照片 ' + n);
+            return client.storage.from(BUCKET).upload(path, rec.blob, {
+              upsert: true, contentType: rec.blob.type || 'image/jpeg', cacheControl: '31536000'
+            }).then(function (res) {
+              if (res.error) throw res.error;
+              return verify(path, rec.blob.size);
+            }).then(function () {
+              rec.cloudUrl = tagFor(path);
+              return Photos.put(id, rec);
+            }).then(function () {
+              if (m.photoPath !== path) { m.photoPath = path; changed = true; }
+              return removeOld([path]);
+            });
           });
         });
       });
-    }, Promise.resolve());
+    }, Promise.resolve()).then(function () {
+      if (changed) App.saveQuiet();
+    });
   }
 
+  // 這台沒有的照片：從雲端下載並存一份在本機
   function downloadPhotos(uid) {
     var got = 0;
-    return photoIds().reduce(function (chain, id) {
+    return withPhoto().reduce(function (chain, m) {
       return chain.then(function () {
+        var id = m.photoId;
         return Photos.get(id).then(function (p) {
           if (p && p.blob) return;
-          var path = uid + '/' + id + '.jpg';
+          var path = m.photoPath || pathFor(uid, id);
           return client.storage.from(BUCKET).download(path).then(function (res) {
-            if (res.error || !res.data) return;   // 雲端也沒有（例如另一台還沒上傳），下次再試
+            if (!res.error && res.data) return { blob: res.data, tag: tagFor(path) };
+            return client.storage.from(OLD_BUCKET).download(path).then(function (r2) {
+              return !r2.error && r2.data ? { blob: r2.data, tag: path } : null;
+            }, function () { return null; });
+          }).then(function (r) {
+            if (!r) return;   // 雲端也沒有（例如另一台還沒上傳），下次再試
             got++;
-            return Photos.put(id, { blob: res.data, size: res.data.size, createdAt: Date.now(), cloudUrl: path });
+            return Photos.put(id, { blob: r.blob, size: r.blob.size, createdAt: Date.now(), cloudUrl: r.tag });
           });
         });
       });
     }, Promise.resolve()).then(function () { return got; });
+  }
+
+  // 刪除物品或移除照片：記下來，同步時從雲端刪掉（沒網路時等有網路再刪）
+  function loadDel() { try { return JSON.parse(localStorage.getItem(DEL_KEY)) || []; } catch (e) { return []; } }
+  function saveDel(list) { try { localStorage.setItem(DEL_KEY, JSON.stringify(list)); } catch (e) { /* 下次再存 */ } }
+
+  function queueDelete(photoId) {
+    if (!photoId) return;
+    var list = loadDel();
+    if (list.indexOf(photoId) < 0) { list.push(photoId); saveDel(list); }
+    schedule();
+  }
+
+  function processDeletes(uid) {
+    var list = loadDel();
+    if (!list.length) return Promise.resolve();
+    var inUse = withPhoto().map(function (m) { return m.photoId; });
+    var todo = list.filter(function (id) { return inUse.indexOf(id) < 0; });   // 又被用回來的不刪
+    if (!todo.length) { saveDel([]); return Promise.resolve(); }
+    var paths = todo.map(function (id) { return pathFor(uid, id); });
+    return client.storage.from(BUCKET).remove(paths).then(function (res) {
+      if (res.error) throw res.error;
+      return removeOld(paths);
+    }).then(function () {
+      saveDel(loadDel().filter(function (id) { return todo.indexOf(id) < 0; }));
+    });
   }
 
   // ---------- 同步 ----------
@@ -234,6 +311,8 @@
       });
     }
     return uploadPhotos(uid).then(loop).then(function () {
+      return processDeletes(uid);
+    }).then(function () {
       return downloadPhotos(uid);
     }).then(function (got) {
       if (got) App.refreshView();
@@ -407,6 +486,6 @@
     render();
   }
 
-  window.Cloud = { schedule: schedule, sync: sync, merge3: merge3, render: render, status: function () { return status; } };
+  window.Cloud = { schedule: schedule, sync: sync, queueDelete: queueDelete, merge3: merge3, render: render, status: function () { return status; } };
   init();
 })();
