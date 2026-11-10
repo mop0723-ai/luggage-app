@@ -9,7 +9,9 @@
  *   - subtype：鞋子的款式（例如跑步鞋、短靴）
  *   - part：穿搭部位，給之後的「模擬穿搭」用
  *       top 上衣、bottom 下身、full 洋裝／連身（同時算上衣＋下身）、outer 外套、
- *       shoes 鞋子、hat 帽子、scarf 圍巾、accessory 配件
+ *       shoes 鞋子、hat 帽子、scarf 圍巾、accessory 配件、sleep 睡衣
+ *       睡衣不算外出穿搭：之後做穿搭建議時，只用 OUTFIT_PARTS 裡的部位（不含 sleep）
+ *   睡衣以「一套」為一件物品（單位：套），照片和重量都記整套
  *   - home：放在哪個家，清單存在 state.homes
  *   - uses：鞋子用途；material：材質；thickness：圍巾厚度
  *   - length／lengthCm：皮帶長度（短、標準、長）與實際公分
@@ -95,6 +97,9 @@
   HEX[OTHER] = 'conic-gradient(#dc2626, #facc15, #16a34a, #3b82f6, #8b5cf6, #dc2626)';
 
   var FULL_COLORS = ['黑', '白', '灰', '米', '咖啡', '藍', '海軍藍', '綠', '紅', '粉紅', '黃', '紫', '金色', '銀色', OTHER];
+  var BASIC_COLORS = FULL_COLORS.filter(function (c) { return c !== '金色' && c !== '銀色'; });   // 睡衣用：不含金銀
+  // 外出穿搭會用到的部位（睡衣不算）
+  var OUTFIT_PARTS = ['top', 'bottom', 'full', 'outer', 'shoes', 'hat', 'scarf', 'accessory'];
   var JEWEL_COLORS = ['金色', '銀色', '玫瑰金', '珍珠白', OTHER];
   var WATCH_COLORS = ['金色', '銀色', '玫瑰金', '黑色', '雙色（金銀）', OTHER];
   var STRAP_COLORS = ['黑色', '咖啡色', '淺棕色', '深棕色', '白色', '金色', '銀色', '紅色', '藍色', '綠色', OTHER];
@@ -119,6 +124,7 @@
     { name: '下身', part: 'bottom', types: ['長褲', '牛仔褲', '短褲', '裙子', OTHER] },
     { name: '洋裝／連身', part: 'full', types: [] },
     { name: '外套', part: 'outer', types: ['外套', '大衣', '羽絨衣', OTHER] },
+    { name: '睡衣', part: 'sleep', types: ['長袖睡衣', '短袖睡衣', OTHER] },
     { name: '鞋子', part: 'shoes', types: Object.keys(SHOE_TYPES).concat(OTHER) },
     { name: '帽子', part: 'hat', types: ['棒球帽', '漁夫帽', '登山帽', '毛帽', '草帽', '貝雷帽', '紳士帽', OTHER] },
     { name: '圍巾', part: 'scarf', types: [] },
@@ -148,6 +154,9 @@
       if (SHOE_TYPES[t]) f.push({ key: 'subtype', label: '款式', kind: 'one', options: SHOE_TYPES[t], sub: true });
       f.push({ key: 'uses', label: '用途', kind: 'many', options: ['日常', '正式', '跑步', '走路', '網球', '騎馬', '雨天', '登山', OTHER] });
       f.push({ key: 'colors', label: '顏色', kind: 'many', options: FULL_COLORS, swatch: true });
+      f.push({ key: 'seasons', label: '適合季節', kind: 'many', options: SEASONS, noOther: true });
+    } else if (g === '睡衣') {
+      f.push({ key: 'colors', label: '顏色', kind: 'many', options: BASIC_COLORS, swatch: true });
       f.push({ key: 'seasons', label: '適合季節', kind: 'many', options: SEASONS, noOther: true });
     } else if (g === '帽子') {
       f.push({ key: 'colors', label: '顏色', kind: 'many', options: FULL_COLORS, swatch: true });
@@ -234,6 +243,7 @@
     });
   });
   KEYWORDS.push(['帽子', { group: '帽子', type: '' }]);
+  KEYWORDS.push(['睡衣', { group: '睡衣', type: '' }]);
 
   function guess(name, norm) {
     var q = norm(name);
@@ -539,7 +549,9 @@
     .filter(function (c) { return c !== OTHER; }));
 
   window.Clothing = {
-    OTHER: OTHER, GROUPS: GROUPS, SEASONS: SEASONS, STYLES: STYLES, ALL_COLORS: ALL_COLORS,
+    OTHER: OTHER, GROUPS: GROUPS, OUTFIT_PARTS: OUTFIT_PARTS,
+    isOutfitItem: function (c) { return !!(c && OUTFIT_PARTS.indexOf(c.part) >= 0); },
+    isSleepwear: function (c) { return !!(c && c.group === '睡衣'); }, SEASONS: SEASONS, STYLES: STYLES, ALL_COLORS: ALL_COLORS,
     groupOf: groupOf, colorHex: colorHex, empty: empty, hasTags: hasTags, typeName: typeName, refName: refName,
     guess: guess, upgrade: upgrade, fromOld: fromOld, fieldsFor: fieldsFor, createPicker: createPicker, askText: askText
   };

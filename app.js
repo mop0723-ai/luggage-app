@@ -313,6 +313,7 @@
       (flight ? '<span class="muted">　' + esc(flight) + '</span>' : '') + '</div>' +
       '<div class="next-allow">' + esc(T.allowanceText(l.allowance)) + '</div>' +
       T.homeBadge(l.to) +
+      (sleepReminder() ? '<div class="sleep-badge">🛌 這趟還沒帶睡衣，記得放一套進行李</div>' : '') +
       '<p class="muted small next-note">剩餘公斤數依這段航班的額度計算</p>';
   }
 
@@ -544,8 +545,30 @@
     unit = u;
     Array.prototype.forEach.call($('#f-unit').children, function (b) {
       b.classList.toggle('on', b.getAttribute('data-unit') === u);
+      if (b.getAttribute('data-unit') === '套') b.hidden = u !== '套';   // 「套」只在睡衣時出現
     });
     updatePreview();
+  }
+
+  // ---------- 睡衣提醒：有下一趟旅程、行李裡還沒有睡衣 ----------
+  function hasSleepwearPacked() {
+    return state.items.some(function (it) {
+      var m = it.catalogId && entryById(it.catalogId);
+      return m && m.clothing && m.clothing.group === '睡衣';
+    });
+  }
+  function sleepReminder() {
+    var next = nextLeg();
+    if (!next || hasSleepwearPacked()) return '';
+    return '🛌 「' + next.trip.name + '」還沒帶睡衣，記得放一套進行李';
+  }
+  function renderSleepReminder() {
+    var text = sleepReminder();
+    var el = $('#sleep-reminder');
+    el.hidden = !text;
+    el.innerHTML = text ? esc(text) +
+      (state.memory.some(function (m) { return m.clothing && m.clothing.group === '睡衣'; })
+        ? '<span class="muted small">（可以在下方「從衣櫃挑」選）</span>' : '') : '';
   }
 
   // ---------- 照片與衣服標籤（放進行李） ----------
@@ -696,6 +719,11 @@
     onChange: function (tags, key) {
       tagsTouched = true;
       syncHeavy();
+      // 睡衣以「一套」為單位
+      if (key === 'group') {
+        if (tags.group === '睡衣') setUnit('套');
+        else if (unit === '套') setUnit('個');
+      }
       if (key === 'group' || key === 'type' || key === 'subtype') {
         var tn = Clothing.typeName(tags);
         var nameEl = $('#f-name');
@@ -798,6 +826,7 @@
     syncClothingBox();
     picker.render();
     renderMemory();
+    renderSleepReminder();
     updatePreview();
   }
 
@@ -959,6 +988,9 @@
       if (g) picker.apply(g);
       else if (cur.group) picker.apply({ group: '', type: '', subtype: '' });
     }
+    // 猜到是睡衣就用「套」，不是就換回「個」
+    if (picker.get().group === '睡衣') setUnit('套');
+    else if (unit === '套') setUnit('個');
     syncClothingBox();
   });
 
@@ -1063,6 +1095,7 @@
     syncHeavy();
     photoJob.then(renderMemory);
     renderMemory();
+    renderSleepReminder();
     $('#f-name').focus();
   });
 

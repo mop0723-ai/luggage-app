@@ -362,6 +362,9 @@
     m.weight = weight;
     m.estimated = !weightByUser;
     m.clothing = JSON.parse(JSON.stringify(tags));
+    // 睡衣以「一套」為單位；改成別的類別就回到「個」
+    if (tags.group === '睡衣') m.unit = '套';
+    else if (m.unit === '套') m.unit = '個';
     m.updatedAt = Date.now();
     if (isNew) st().memory.push(m);
     // 「放在哪個家」改了，而且不在行李裡：當作搬到那個家（記一筆移動紀錄）
