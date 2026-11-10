@@ -693,12 +693,30 @@
   $('#cal-year-prev').addEventListener('click', function () { yearCursor--; renderYear(); });
   $('#cal-year-next').addEventListener('click', function () { yearCursor++; renderYear(); });
 
+  // 從首頁「修改額度」過來：捲到那一段航班的額度欄位
+  function focusLeg(i) {
+    setTimeout(function () {
+      var card = document.querySelectorAll('#tf-legs .leg-card')[i];
+      if (!card) return;
+      var grid = card.querySelector('.allow-grid');
+      (grid || card).scrollIntoView({ behavior: 'smooth', block: 'center' });
+      card.classList.remove('flash');
+      void card.offsetWidth;
+      card.classList.add('flash');
+    }, 50);
+  }
+
   // ---------- 對外 ----------
   function show(param) {
     var inForm = !!param;
     $('#trip-list-view').hidden = inForm;
     $('#trip-form').hidden = !inForm;
-    if (inForm) { openForm(param); return; }
+    if (inForm) {
+      var m = /^(.*)\/leg\/(\d+)$/.exec(param);
+      openForm(m ? m[1] : param);
+      if (m) focusLeg(+m[2]);
+      return;
+    }
     try {
       var saved = localStorage.getItem('luggage-trip-view');
       if (saved && /^(list|month|year)$/.test(saved)) viewMode = saved;

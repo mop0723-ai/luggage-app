@@ -29,21 +29,13 @@
           <div class="muted">目前行李總重量</div>
           <div class="total-value"><span id="total-num">0.0</span> kg</div>
         </div>
-        <button type="button" id="go-allowance" class="right limit-link">
-          <div class="muted">總上限 <span class="edit-hint">調整</span></div>
+        <a id="limit-link" class="right limit-link" href="#trips">
+          <div class="muted">總上限 <span class="edit-hint" id="limit-link-text">修改額度</span></div>
           <div class="total-value"><span id="limit-num">0</span> kg</div>
-        </button>
+        </a>
       </div>
 
       <div id="bag-list"></div>
-
-      <div id="allowance" class="card settings">
-        <div class="card-head"><span>行李額度（依航空公司調整）</span></div>
-        <p class="muted small">每次出發前，依這次航空公司給的額度修改「上限」。「空箱」是行李箱本身的重量，會算進總重量。改完會自動儲存。</p>
-        <p id="allowance-note" class="allowance-note" hidden>✈️ 目前有下一段航班，首頁上限依那段的額度計算；這裡的「上限」在沒有排行程、或航班沒填某項額度時使用。「類型」決定每個行李對應航班的哪一項額度。</p>
-        <div id="bag-settings"></div>
-        <button type="button" id="add-bag" class="btn ghost">＋ 新增一個行李</button>
-      </div>
 
       <div id="cloud-card" class="card cloud-card form">
         <div class="card-head"><span>備份與雲端同步</span></div>

@@ -1027,3 +1027,13 @@ body.pk-dragging { user-select: none; -webkit-user-select: none; }
   .dr-row { flex-wrap: wrap; }
   .dr-row .dr-stock, .dr-row .dr-qty { margin-left: auto; }
 }
+
+/* ---------- 首頁額度（讀取行程） ---------- */
+a.limit-link { text-decoration: none; }
+.next-allow { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 10px; }
+.next-allow .link { padding: 0; font-weight: 700; }
+.first-trip-btn { display: flex; align-items: center; justify-content: center; text-decoration: none; margin: 4px 0 8px; }
+.leg-card.flash { animation: flash 1.6s; }
+.remain-card.none { background: var(--card); color: var(--muted); }
+.remain-card.none .remain-status { background: var(--bg); }
+.remain-card.none .remain-status span { color: var(--muted); }

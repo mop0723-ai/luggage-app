@@ -186,6 +186,21 @@
     if (!Array.isArray(s.trips)) s.trips = [];
     s.trips.forEach(normalizeTrip);
     s.bags.forEach(function (b) { if (!b.kind) b.kind = guessBagKind(b.name); });
+    // 首頁原本填的額度：搬到行程裡還沒填的航班段（只做一次；填過或填 0 的不動）
+    if (!s.allowanceMoved) {
+      s.trips.forEach(function (t) {
+        t.legs.forEach(function (l) {
+          ['checked', 'carry', 'personal'].forEach(function (k) {
+            var v = l.allowance[k];
+            if (v !== '' && v != null) return;
+            var bags = s.bags.filter(function (b) { return b.kind === k; });
+            if (!bags.length) return;
+            l.allowance[k] = bags.reduce(function (sum, b) { return sum + (Number(b.limit) || 0); }, 0);
+          });
+        });
+      });
+      s.allowanceMoved = true;
+    }
     if (!s.sync) s.sync = { userId: null, lastSyncedAt: null };
     s.schemaVersion = SCHEMA_VERSION;
     return s;
@@ -302,12 +317,20 @@
     return out;
   }
 
+  // 「修改額度」連到行程設定裡那一段航班
+  function legLink(next) {
+    return '#trips/' + encodeURIComponent(next.trip.id) + '/leg/' + next.index;
+  }
+
   function renderNextTrip(next) {
     var box = $('#next-trip');
     if (!next) {
-      box.innerHTML = '<div class="next-title">下一趟旅程</div>' +
-        '<p class="muted small">還沒有接下來的航班。到「行程」新增旅程後，剩餘公斤數會依下一段航班的額度計算；目前用下方「行李額度」的設定。</p>' +
-        '<a class="btn ghost small-btn" href="#trips/new">＋ 新增旅程</a>';
+      var hasTrips = state.trips.length > 0;
+      box.innerHTML = '<div class="next-title">' + (hasTrips ? '沒有接下來的航班' : '還沒有旅程') + '</div>' +
+        '<p class="muted small">行李額度會自動讀取「行程」裡下一段航班的托運、手提、背包額度。' +
+        (hasTrips ? '目前的旅程都已經結束，' : '') + '先新增一趟旅程吧。</p>' +
+        '<a class="btn primary first-trip-btn" href="#trips/new">＋ 先新增一趟旅程</a>' +
+        (hasTrips ? '<a class="link small" href="#trips">查看所有行程</a>' : '');
       return;
     }
     var l = next.leg, T = window.Trips;
@@ -316,7 +339,8 @@
       '<a class="link" href="#trips/' + encodeURIComponent(next.trip.id) + '">查看</a></div>' +
       '<div class="next-leg">' + T.fmtDate(l.date) + '　<b>' + T.legRoute(l) + '</b>' +
       (flight ? '<span class="muted">　' + esc(flight) + '</span>' : '') + '</div>' +
-      '<div class="next-allow">' + esc(T.allowanceText(l.allowance)) + '</div>' +
+      '<div class="next-allow"><span>額度：' + esc(T.allowanceText(l.allowance)) + '</span>' +
+      '<a class="link small" href="' + legLink(next) + '">修改額度</a></div>' +
       T.homeBadge(l.to) +
       '<p class="muted small next-note">剩餘公斤數依這段航班的額度計算</p>';
   }
@@ -338,24 +362,26 @@
     });
     renderNextTrip(next);
     if (window.Organize) window.Organize.check();
-    $('#allowance-note').hidden = !next;
     var remain = limit - total;
     var lv = level(remain, limit);
 
     var card = $('#remain-card');
-    card.className = 'remain-card ' + lv;
-    $('#remain-num').textContent = fmt(remain);
-    $('#remain-status').innerHTML = '<span>' +
-      (lv === 'bad' ? '超重 ' + fmt(-remain) + ' kg' : lv === 'warn' ? '快滿了' : '充裕') + '</span>';
+    card.className = 'remain-card ' + (next ? lv : 'none');
+    // 額度只讀行程：沒有接下來的航班時不計算
+    $('#remain-num').textContent = next ? fmt(remain) : '—';
+    $('#remain-status').innerHTML = '<span>' + (!next ? '新增旅程後就會計算' :
+      lv === 'bad' ? '超重 ' + fmt(-remain) + ' kg' : lv === 'warn' ? '快滿了' : '充裕') + '</span>';
     $('#total-num').textContent = fmt(total);
-    $('#limit-num').textContent = fmt(limit);
+    $('#limit-num').textContent = next ? fmt(limit) : '—';
+    $('#limit-link').href = next ? legLink(next) : '#trips/new';
+    $('#limit-link-text').textContent = next ? '修改額度' : '新增旅程';
 
     // 各行李
     var html = state.bags.map(function (b) {
       var w = bagLoad(b) + pendOf(b).weight;
       var lim = limits[b.id];
-      var blv = level(lim - w, lim);
-      var pct = lim > 0 ? Math.min(100, (w / lim) * 100) : 100;
+      var blv = next ? level(lim - w, lim) : 'ok';
+      var pct = !next ? 0 : lim > 0 ? Math.min(100, (w / lim) * 100) : 100;
       var items = state.items.filter(function (it) { return it.bagId === b.id; });
       var list = items.length
         ? '<ul class="items">' + items.map(function (it) {
@@ -372,29 +398,14 @@
       var kindName = (BAG_KINDS.find(function (k) { return k[0] === b.kind; }) || [, ''])[1];
       return '<div class="card"><div class="bag-head"><span class="bag-name">' + esc(b.name) +
         (kindName ? '<span class="tag">' + kindName + '</span>' : '') + '</span>' +
-        '<span class="bag-weight">' + fmt(w) + ' / ' + fmt(lim) + ' kg</span></div>' +
+        '<span class="bag-weight">' + fmt(w) + (next ? ' / ' + fmt(lim) : '') + ' kg</span></div>' +
         '<div class="bar ' + blv + '"><i style="width:' + pct + '%"></i></div>' +
-        '<div class="muted small">含空箱 ' + fmt(Number(b.tare) || 0) + ' kg・剩 ' + fmt(lim - w) + ' kg</div>' +
+        '<div class="muted small">含空箱 ' + fmt(Number(b.tare) || 0) + ' kg' + (next ? '・剩 ' + fmt(lim - w) + ' kg' : '') + '</div>' +
         list + '</div>';
     }).join('');
     $('#bag-list').innerHTML = html;
     Photos.fillThumbs($('#bag-list'));
 
-    renderBagSettings();
-  }
-
-  function renderBagSettings() {
-    $('#bag-settings').innerHTML = state.bags.map(function (b) {
-      return '<div class="bag-edit" data-bag="' + b.id + '">' +
-        '<label class="be-name">名稱<input data-field="name" value="' + esc(b.name) + '" maxlength="20"></label>' +
-        '<label class="be-kind">類型<select data-field="kind">' + BAG_KINDS.map(function (k) {
-          return '<option value="' + k[0] + '"' + (b.kind === k[0] ? ' selected' : '') + '>' + k[1] + '</option>';
-        }).join('') + '</select></label>' +
-        '<label>上限 kg<input data-field="limit" type="number" inputmode="decimal" step="any" min="0" value="' + b.limit + '"></label>' +
-        '<label>空箱 kg<input data-field="tare" type="number" inputmode="decimal" step="any" min="0" value="' + b.tare + '"></label>' +
-        '<button type="button" class="icon-btn" data-del-bag="' + b.id + '" aria-label="刪除行李">🗑</button>' +
-        '</div>';
-    }).join('');
   }
 
   $('#bag-list').addEventListener('click', function (e) {
@@ -406,54 +417,6 @@
     if (!it || !confirm('要把「' + it.name + '」移出行李嗎？')) return;
     state.items = state.items.filter(function (x) { return x.id !== id; });
     restoreHome(ent);
-    save();
-    renderHome();
-  });
-
-  // 行李設定：離開輸入框時才重畫，避免輸入中被打斷
-  $('#bag-settings').addEventListener('change', function (e) {
-    var row = e.target.closest('[data-bag]');
-    if (!row) return;
-    var bag = bagById(row.getAttribute('data-bag'));
-    var field = e.target.getAttribute('data-field');
-    if (!bag || !field) return;
-    if (field === 'name') {
-      bag.name = e.target.value.trim() || bag.name;
-    } else if (field === 'kind') {
-      bag.kind = e.target.value;
-    } else {
-      var v = parseFloat(e.target.value);
-      bag[field] = isFinite(v) && v >= 0 ? v : 0;
-    }
-    save();
-    renderHome();
-  });
-
-  $('#bag-settings').addEventListener('click', function (e) {
-    var btn = e.target.closest('[data-del-bag]');
-    if (!btn) return;
-    if (state.bags.length <= 1) { toast('至少要保留一個行李'); return; }
-    var id = btn.getAttribute('data-del-bag');
-    var bag = bagById(id);
-    var count = state.items.filter(function (it) { return it.bagId === id; }).length;
-    var msg = '要刪除「' + bag.name + '」嗎？' + (count ? '裡面的 ' + count + ' 項物品也會一起刪除。' : '');
-    if (!confirm(msg)) return;
-    state.bags = state.bags.filter(function (b) { return b.id !== id; });
-    state.items = state.items.filter(function (it) { return it.bagId !== id; });
-    save();
-    renderHome();
-  });
-
-  $('#go-allowance').addEventListener('click', function () {
-    var box = $('#allowance');
-    box.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    box.classList.remove('flash');
-    void box.offsetWidth;
-    box.classList.add('flash');
-  });
-
-  $('#add-bag').addEventListener('click', function () {
-    state.bags.push({ id: uid(), name: '行李 ' + (state.bags.length + 1), kind: 'personal', limit: 7, tare: 0 });
     save();
     renderHome();
   });
