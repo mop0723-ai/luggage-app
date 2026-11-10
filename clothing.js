@@ -322,7 +322,7 @@
     var listId = 'brands-' + Math.random().toString(36).slice(2, 7);
 
     el.innerHTML =
-      '<div class="field-title">種類</div>' +
+      '<div class="field-title">單品類別</div>' +
       '<div class="chips pick" data-k="group"></div>' +
       '<div data-fields></div>' +
       '<div class="field-title">放在哪個家</div>' +

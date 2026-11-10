@@ -302,7 +302,7 @@
   $('#closet-form').addEventListener('submit', function (e) {
     e.preventDefault();
     var tags = picker.get();
-    if (!tags.group) { App.toast('請先點選衣服種類'); return; }
+    if (!tags.group) { App.toast('請先點選單品類別'); return; }
     var name = $('#cf-name').value.trim() || C.typeName(tags);
     var grams = parseFloat($('#cf-weight').value);
     var weight = isFinite(grams) && grams >= 0 ? grams / 1000 : refWeight(tags);
