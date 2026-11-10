@@ -761,3 +761,41 @@ a.pick-tile { text-decoration: none; }
 .cloud-status.offline { color: var(--warn); }
 .cloud-status.syncing { color: var(--primary); }
 .cloud-card label.file-btn { display: flex; align-items: center; justify-content: center; color: var(--primary); font-weight: 700; }
+
+/* ---------- 轉機 ---------- */
+.leg-grid label .muted { font-size: 0.75rem; }
+.conn-box {
+  margin: -6px 12px 14px;
+  padding: 12px;
+  border: 2px dashed #c7d2fe;
+  border-radius: 12px;
+  background: #f5f7ff;
+}
+.conn-head { margin-bottom: 10px; line-height: 1.5; }
+.conn-warn { color: var(--bad); font-weight: 700; font-size: 0.9rem; }
+.conn-row { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
+.conn-label { flex: none; width: 4.5em; padding-top: 8px; font-size: 0.85rem; color: var(--muted); }
+.conn-row .chips { flex: 1; }
+.conn-stay { display: grid; grid-template-columns: 110px 1fr; gap: 8px; margin-top: 4px; }
+.conn-stay label { margin-bottom: 6px !important; font-size: 0.85rem; }
+.recheck-badge {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.leg-recheck:empty { display: none; }
+.leg-recheck { margin: -2px 0 6px; }
+.conn-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.conn-tag { display: inline-flex; align-items: center; gap: 3px; font-size: 0.75rem; background: var(--bg); border-radius: 8px; padding: 2px 4px 2px 8px; }
+.ct-city { color: var(--muted); margin-right: 2px; }
+.ct { padding: 1px 6px; border-radius: 6px; font-weight: 700; color: #fff; }
+.ct.through { background: #059669; }
+.ct.recheck { background: #ea580c; }
+.ct.transit { background: #64748b; }
+.ct.enter { background: #2563eb; }
+input.invalid { border-color: var(--bad); outline: 2px solid var(--bad); outline-offset: -1px; }

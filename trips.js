@@ -81,6 +81,7 @@
         '<div class="trip-route">' + cities.map(function (c) {
           return '<span class="city' + (homeFor(c) ? ' is-home' : '') + '">' + (homeFor(c) ? '🏠' : '') + esc(c) + '</span>';
         }).join('<span class="arrow">→</span>') + '</div>' +
+        connTags(t) +
         '</a>';
     }).join('');
     $('#trip-empty').hidden = trips.length > 0;
@@ -148,6 +149,17 @@
     return isFinite(n) && n >= 0 ? n : '';
   }
 
+  // 時間用數字輸入，固定 24 小時制：打 2330 會自動變成 23:30
+  var TIME_ATTRS = 'type="text" inputmode="numeric" maxlength="5" autocomplete="off" placeholder="例如 23:30"';
+  var TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+  function formatTime(raw, final) {
+    var d = String(raw).replace(/\D/g, '').slice(0, 4);
+    if (final && d.length === 3) d = '0' + d;          // 905 → 09:05
+    if (final && d.length <= 2 && d) d = ('0' + d).slice(-2) + '00';   // 9 → 09:00
+    return d.length > 2 ? d.slice(0, 2) + ':' + d.slice(2) : d;
+  }
+
   function legHTML(l, i, n) {
     var a = l.allowance || {};
     function input(field, label, attrs, value) {
@@ -164,11 +176,15 @@
       '<div class="leg-grid">' +
       input('from', '出發城市', 'maxlength="30" placeholder="例如：台北"', l.from) +
       input('to', '抵達城市', 'maxlength="30" placeholder="例如：曼谷"', l.to) +
-      input('date', '日期', 'type="date"', l.date) +
+      input('date', '起飛日期', 'type="date"', l.date) +
+      input('depTime', '起飛時間（當地，24 小時）', TIME_ATTRS, l.depTime) +
+      input('arrDate', '抵達日期 <span class="muted">（同一天可不填）</span>', 'type="date"', l.arrDate) +
+      input('arrTime', '抵達時間（當地，24 小時）', TIME_ATTRS, l.arrTime) +
       input('flightNo', '航班號碼', 'maxlength="12" placeholder="例如：BR211" autocapitalize="characters"', l.flightNo) +
       '<div class="span2">' + input('airline', '航空公司', 'maxlength="30" placeholder="例如：長榮航空"', l.airline) + '</div>' +
       '</div>' +
       '<div class="leg-home" data-home="' + i + '">' + homeBadge(l.to) + '</div>' +
+      '<div class="leg-recheck" data-recheck="' + i + '">' + recheckNote(l, i, n) + '</div>' +
       '<div class="field-title">這段的行李額度 <span class="muted small">沒填＝沿用行李額度的設定；填 0＝這段沒有這項</span></div>' +
       '<div class="allow-grid">' +
       input('checked', '托運（公斤）', 'type="number" inputmode="decimal" step="any" min="0" placeholder="例如 23"', a.checked) +
@@ -177,9 +193,98 @@
       '</div></div>';
   }
 
+  // ---------- 轉機 ----------
+  function pad2(n) { return String(n).padStart(2, '0'); }
+
+  // 這段實際抵達的日期：有填抵達日期就用它；沒填而且抵達時間比起飛時間早，視為隔天抵達
+  function arrivalDate(l) {
+    if (l.arrDate) return l.arrDate;
+    if (l.date && l.arrTime && l.depTime && l.arrTime < l.depTime) return addDays(l.date, 1);
+    return l.date;
+  }
+
+  function toMinutes(date, time) {
+    var p = date.split('-'), t = time.split(':');
+    return Date.UTC(+p[0], +p[1] - 1, +p[2], +t[0], +t[1]) / 60000;
+  }
+
+  // 抵達到下一段起飛之間的分鐘數（兩個時間都是轉機城市的當地時間，直接相減）
+  function layoverMinutes(a, b) {
+    var ad = arrivalDate(a);
+    if (!ad || !a.arrTime || !b.date || !b.depTime) return null;
+    return toMinutes(b.date, b.depTime) - toMinutes(ad, a.arrTime);
+  }
+
+  function fmtDuration(min) {
+    var d = Math.floor(min / 1440), h = Math.floor((min % 1440) / 60), m = min % 60;
+    return (d ? d + ' 天 ' : '') + (h ? h + ' 小時' : '') + (m ? (h || d ? ' ' : '') + m + ' 分' : '') || '0 分';
+  }
+
+  function conn(l) {
+    if (!l.connection) l.connection = { baggage: '', mode: '', stayDays: '', note: '' };
+    return l.connection;
+  }
+
+  function recheckNote(l, i, n) {
+    return i < n - 1 && conn(l).baggage === 'recheck'
+      ? '<div class="recheck-badge">🧳 行李要領出，可以整理或換東西</div>' : '';
+  }
+
+  function connHTML(i) {
+    var a = draft.legs[i], b = draft.legs[i + 1];
+    var c = conn(a);
+    var min = layoverMinutes(a, b);
+    var city = a.to || b.from || '轉機點';
+    var time;
+    if (min == null) time = '<span class="muted">填上這段的抵達時間和下一段的起飛日期、時間，就會自動算出轉機時間</span>';
+    else if (min < 0) time = '<span class="conn-warn">⚠️ 下一段起飛比這段抵達還早，請檢查日期和時間</span>';
+    else time = '<b>' + (min >= 1440 ? '停留 ' : '轉機 ') + fmtDuration(min) + '</b>' +
+      (min > 0 && min < 60 ? ' <span class="conn-warn">時間很趕</span>' : '');
+    function opt(key, val, label) {
+      return '<button type="button" class="chip' + (c[key] === val ? ' on' : '') + '" data-conn-set="' + i + '" data-k="' + key + '" data-v="' + val + '">' + label + '</button>';
+    }
+    return '<div class="conn-box" data-conn="' + i + '">' +
+      '<div class="conn-head">🔁 在 <b>' + esc(city) + '</b>　' + time + '</div>' +
+      '<div class="conn-row"><span class="conn-label">行李</span><div class="chips">' +
+      opt('baggage', 'through', '直掛到下一段') + opt('baggage', 'recheck', '需要領出重新託運') + '</div></div>' +
+      '<div class="conn-row"><span class="conn-label">轉機方式</span><div class="chips">' +
+      opt('mode', 'transit', '不入境，直接轉機') + opt('mode', 'enter', '入境停留') + '</div></div>' +
+      (c.mode === 'enter'
+        ? '<div class="conn-stay"><label>停留天數<input type="number" inputmode="numeric" min="0" step="1" data-conn-field="stayDays" data-conn-i="' + i + '" value="' + esc(c.stayDays) + '" placeholder="例如 2"></label>' +
+          '<label>備註<input maxlength="60" data-conn-field="note" data-conn-i="' + i + '" value="' + esc(c.note) + '" placeholder="例如：去清邁玩、住朋友家"></label></div>'
+        : '') +
+      (c.baggage === 'recheck' ? '<div class="recheck-badge">🧳 行李要領出，可以整理或換東西</div>' : '') +
+      '</div>';
+  }
+
+  function refreshConn(i) {
+    var n = draft.legs.length;
+    [i - 1, i].forEach(function (k) {
+      if (k < 0 || k >= n - 1) return;
+      var el = $('#tf-legs [data-conn="' + k + '"]');
+      if (el) el.outerHTML = connHTML(k);
+    });
+  }
+
+  // 行程列表的小標籤：每個轉機點「直掛／領出」「轉機／入境」
+  function connTags(t) {
+    var html = '';
+    for (var i = 0; i < t.legs.length - 1; i++) {
+      var c = t.legs[i].connection || {};
+      if (!c.baggage && !c.mode) continue;
+      html += '<span class="conn-tag"><span class="ct-city">' + esc(t.legs[i].to || '轉機') + '</span>' +
+        (c.baggage ? '<span class="ct ' + c.baggage + '">' + (c.baggage === 'through' ? '直掛' : '領出') + '</span>' : '') +
+        (c.mode ? '<span class="ct ' + c.mode + '">' + (c.mode === 'enter' ? '入境' + (c.stayDays ? ' ' + c.stayDays + ' 天' : '') : '轉機') + '</span>' : '') +
+        '</span>';
+    }
+    return html ? '<div class="conn-tags">' + html + '</div>' : '';
+  }
+
   function renderLegs() {
     var n = draft.legs.length;
-    $('#tf-legs').innerHTML = draft.legs.map(function (l, i) { return legHTML(l, i, n); }).join('');
+    $('#tf-legs').innerHTML = draft.legs.map(function (l, i) {
+      return legHTML(l, i, n) + (i < n - 1 ? connHTML(i) : '');
+    }).join('');
     $('#tf-origin-home').innerHTML = homeFor(draft.origin)
       ? '<div class="home-badge">🏠 出發地' + esc(homeFor(draft.origin)) + '有家</div>' : '';
   }
@@ -201,19 +306,63 @@
         ? '<div class="home-badge">🏠 出發地' + esc(homeFor(draft.origin)) + '有家</div>' : '';
       return;
     }
+    var ci = el.getAttribute('data-conn-i');
+    if (ci != null) {
+      var cf = el.getAttribute('data-conn-field');
+      conn(draft.legs[+ci])[cf] = cf === 'stayDays' ? numVal(el.value) : el.value.trim();
+      return;
+    }
     var i = el.getAttribute('data-leg');
     if (i == null) return;
     var l = draft.legs[+i];
     var field = el.getAttribute('data-field');
+    if (field === 'depTime' || field === 'arrTime') {
+      var v = formatTime(el.value, false);
+      if (el.value !== v) el.value = v;
+      l[field] = TIME_RE.test(v) ? v : '';
+      el.classList.toggle('invalid', v.length === 5 && !TIME_RE.test(v));
+      refreshConn(+i);
+      return;
+    }
     if (['checked', 'carry', 'personal'].indexOf(field) >= 0) {
       l.allowance[field] = numVal(el.value);
     } else {
       l[field] = field === 'flightNo' ? el.value.trim().toUpperCase() : el.value.trim();
       if (field === 'to') $('#tf-legs [data-home="' + i + '"]').innerHTML = homeBadge(l.to);
+      if (['date', 'depTime', 'arrDate', 'arrTime', 'to', 'from'].indexOf(field) >= 0) refreshConn(+i);
     }
   });
 
+  // 日期、時間選擇器有些瀏覽器只觸發 change
+  $('#trip-form').addEventListener('change', function (e) {
+    var el = e.target, i = el.getAttribute('data-leg'), field = el.getAttribute('data-field');
+    if (i == null) return;
+    if (field === 'depTime' || field === 'arrTime') {
+      // 離開欄位時補齊：905 → 09:05
+      var v = formatTime(el.value, true);
+      el.value = v;
+      draft.legs[+i][field] = TIME_RE.test(v) ? v : '';
+      el.classList.toggle('invalid', !!v && !TIME_RE.test(v));
+      refreshConn(+i);
+      return;
+    }
+    if (['date', 'arrDate'].indexOf(field) < 0) return;
+    draft.legs[+i][field] = el.value.trim();
+    refreshConn(+i);
+  });
+
   $('#trip-form').addEventListener('click', function (e) {
+    var cs = e.target.closest('[data-conn-set]');
+    if (cs) {
+      var k = +cs.getAttribute('data-conn-set');
+      var c = conn(draft.legs[k]);
+      var key = cs.getAttribute('data-k'), val = cs.getAttribute('data-v');
+      c[key] = c[key] === val ? '' : val;
+      $('#tf-legs [data-conn="' + k + '"]').outerHTML = connHTML(k);
+      var rc = $('#tf-legs [data-recheck="' + k + '"]');
+      if (rc) rc.innerHTML = recheckNote(draft.legs[k], k, draft.legs.length);
+      return;
+    }
     var mv = e.target.closest('[data-move]');
     if (mv) {
       var i = +mv.getAttribute('data-move'), j = i + +mv.getAttribute('data-dir');
@@ -478,7 +627,7 @@
       '<div class="muted small">' + fmtDate(x.start) + (x.end !== x.start ? ' ～ ' + fmtDate(x.end) : '') + '</div>' +
       '<div class="trip-route">' + cities.map(function (c) {
         return '<span class="city' + (homeFor(c) ? ' is-home' : '') + '">' + (homeFor(c) ? '🏠' : '') + esc(c) + '</span>';
-      }).join('<span class="arrow">→</span>') + '</div></a>';
+      }).join('<span class="arrow">→</span>') + '</div>' + connTags(x.trip) + '</a>';
   }
 
   function gapItem(g) {

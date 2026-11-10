@@ -49,7 +49,9 @@
    *            importRef,  預留：匯入資訊 { platform, bookingCode, importedAt, raw }
    *            ownerId, members[], shareCode,  預留：多人共用同一份行程
    *            cloudId, syncedAt }             預留：雲端
-   *          legs 航班段：{ id, from, to, date(YYYY-MM-DD), flightNo, airline,
+   *          legs 航班段：{ id, from, to, date(起飛日期 YYYY-MM-DD), depTime, arrDate, arrTime(當地時間 HH:MM), flightNo, airline,
+   *            connection: { baggage: through 直掛／recheck 領出, mode: transit 不入境／enter 入境停留, stayDays, note }
+   *              （抵達這段的終點後、轉下一段時的設定；最後一段不用）
    *            allowance: { checked, carry, personal }（公斤；空白＝沿用行李自己的上限，0＝這段沒有這項額度）,
    *            bookingCode,  預留：訂位代號
    *            ai }          預留：AI 辨識結果 { confidence, fromImage, at }
@@ -105,7 +107,8 @@
 
   function normalizeLeg(l) {
     if (!l.id) l.id = uid();
-    ['from', 'to', 'date', 'flightNo', 'airline'].forEach(function (k) { if (l[k] == null) l[k] = ''; });
+    ['from', 'to', 'date', 'depTime', 'arrDate', 'arrTime', 'flightNo', 'airline'].forEach(function (k) { if (l[k] == null) l[k] = ''; });
+    if (!l.connection) l.connection = { baggage: '', mode: '', stayDays: '', note: '' };
     if (!l.allowance) l.allowance = { checked: '', carry: '', personal: '' };
     if (l.bookingCode === undefined) l.bookingCode = null;
     if (l.ai === undefined) l.ai = null;
