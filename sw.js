@@ -6,7 +6,7 @@
 var CACHE = 'luggage-app-v1';
 var ASSETS = [
   './', 'index.html', 'style.css', 'weights.js', 'photos.js', 'clothing.js', 'app.js',
-  'closet.js', 'trips.js', 'organize.js', 'backup.js', 'cloud.js', 'vendor/supabase.js'
+  'closet.js', 'trips.js', 'organize.js', 'packing.js', 'backup.js', 'cloud.js', 'vendor/supabase.js'
 ];
 
 self.addEventListener('install', function (e) {

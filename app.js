@@ -45,6 +45,7 @@
    * sync    預留：雲端帳號 { userId, lastSyncedAt }
    * homes   「家」的清單，衣服標籤的 clothing.home 會是其中之一
    * customOptions  在「其他」自己輸入過的選項：{ 'colors@配件/皮帶': ['酒紅'], … }
+   * packLists  打包清單，每趟旅程一份（格式見 packing.js）
    * legacyWardrobe 上一版衣櫃的原始資料，留著備份
    * trips  旅程：{ id, name, origin, endHome, legs[], createdAt, updatedAt,
    *            endHome：最後一段結束後回到哪個家（null＝還沒設定，依最後一段抵達城市判斷；''＝未定／不回家）
@@ -178,6 +179,7 @@
     if (!Array.isArray(s.outfits)) s.outfits = [];
     if (!Array.isArray(s.homes)) s.homes = DEFAULT_HOMES.slice();
     if (!s.customOptions || typeof s.customOptions !== 'object') s.customOptions = {};
+    if (!Array.isArray(s.packLists)) s.packLists = [];
     if (!Array.isArray(s.trips)) s.trips = [];
     s.trips.forEach(normalizeTrip);
     s.bags.forEach(function (b) { if (!b.kind) b.kind = guessBagKind(b.name); });
@@ -321,7 +323,10 @@
     var next = nextLeg();
     var limits = bagLimits(next);
     var total = 0, limit = 0;
-    state.bags.forEach(function (b) { total += bagLoad(b); });
+    // 打包清單上「要帶但還沒收好」的重量也算進去
+    var pend = window.Packing ? window.Packing.pendingByBag() : {};
+    function pendOf(b) { return pend[b.id] || { weight: 0, count: 0 }; }
+    state.bags.forEach(function (b) { total += bagLoad(b) + pendOf(b).weight; });
     // 總上限：每種額度各算一次（有填就用航班額度，沒填就加總那類行李自己的上限）
     BAG_KINDS.forEach(function (k) {
       var a = next ? allowanceOf(next.leg, k[0]) : null;
@@ -344,7 +349,7 @@
 
     // 各行李
     var html = state.bags.map(function (b) {
-      var w = bagLoad(b);
+      var w = bagLoad(b) + pendOf(b).weight;
       var lim = limits[b.id];
       var blv = level(lim - w, lim);
       var pct = lim > 0 ? Math.min(100, (w / lim) * 100) : 100;
@@ -359,6 +364,8 @@
               '<button class="icon-btn" data-del-item="' + it.id + '" aria-label="刪除 ' + esc(it.name) + '">✕</button></li>';
           }).join('') + '</ul>'
         : '<div class="empty">還沒有物品</div>';
+      if (pendOf(b).count) list += '<a class="pend-note" href="#pack">＋ 打包清單上還沒收好 ' + pendOf(b).count +
+        ' 件（' + fmtWeight(pendOf(b).weight) + '），已算進重量 ›</a>';
       var kindName = (BAG_KINDS.find(function (k) { return k[0] === b.kind; }) || [, ''])[1];
       return '<div class="card"><div class="bag-head"><span class="bag-name">' + esc(b.name) +
         (kindName ? '<span class="tag">' + kindName + '</span>' : '') + '</span>' +
@@ -1079,13 +1086,14 @@
   // 網址：#home、#add、#closet（衣櫃）、#closet/new（新增衣服）、#closet/<id>（編輯衣服）
   function route() {
     var parts = location.hash.replace(/^#/, '').split('/');
-    var view = ['add', 'closet', 'trips'].indexOf(parts[0]) >= 0 ? parts[0] : 'home';
-    ['home', 'add', 'closet', 'trips'].forEach(function (v) { $('#view-' + v).hidden = v !== view; });
+    var view = ['add', 'closet', 'trips', 'pack'].indexOf(parts[0]) >= 0 ? parts[0] : 'home';
+    ['home', 'add', 'closet', 'trips', 'pack'].forEach(function (v) { $('#view-' + v).hidden = v !== view; });
     document.querySelectorAll('.tabbar a').forEach(function (a) {
       a.classList.toggle('on', a.getAttribute('data-view') === view);
     });
     if (view === 'home') renderHome();
     else if (view === 'add') renderAdd();
+    else if (view === 'pack') { if (window.Packing) window.Packing.show(); }
     else if (view === 'trips') { if (window.Trips) window.Trips.show(decodeURIComponent(parts.slice(1).join('/'))); }
     else if (window.Closet) window.Closet.show(decodeURIComponent(parts.slice(1).join('/')));
     window.scrollTo(0, 0);
