@@ -111,6 +111,10 @@
       s.legacyWardrobe = (s.legacyWardrobe || []).concat(s.wardrobe);
       delete s.wardrobe;
     }
+    // 衣服標籤升級到第 3 版（帽子、圍巾從配件獨立出來、鞋子改成大類＋款式）
+    s.memory.forEach(function (m) {
+      if (m.clothing && window.Clothing) window.Clothing.upgrade(m.clothing);
+    });
     s.items.forEach(function (it) {
       if (it.wardrobeId) { it.catalogId = it.wardrobeId; delete it.wardrobeId; }
     });
@@ -441,9 +445,11 @@
     brands: allBrands,
     homes: homes,
     addHome: addHome,
+    watches: watches,
     onChange: function (tags, key) {
       tagsTouched = true;
-      if (key === 'group' || key === 'type') {
+      syncHeavy();
+      if (key === 'group' || key === 'type' || key === 'subtype') {
         var tn = Clothing.typeName(tags);
         var nameEl = $('#f-name');
         // 名稱空白（或是剛才自動填的）就用種類當名稱
@@ -452,7 +458,7 @@
           if (selectedId) deselect(true);
         }
         if (weightSource !== 'user' && weightSource !== 'memory' && tn) {
-          var ref = findRef(tn);
+          var ref = findRef(Clothing.refName(tags)) || findRef(tags.group);
           if (ref) {
             setWeightField(ref.weight);
             setWeightSource('ref', '參考「' + ref.name + '」' + (ref.note ? '（' + ref.note + '）' : '') +
@@ -466,6 +472,21 @@
 
   function syncClothingBox() {
     $('#f-clothing').hidden = $('#f-cat').value !== '必備品';
+    syncHeavy();
+  }
+
+  // 鞋子很重：重量欄位特別顯眼
+  function syncHeavy() {
+    var heavy = $('#f-cat').value === '必備品' && picker.get().group === '鞋子';
+    $('#f-weight-label').classList.toggle('weight-strong', heavy);
+    $('#f-heavy-tip').hidden = !heavy;
+  }
+
+  // 衣櫃裡的手錶（錶帶選「適用手錶」用）
+  function watches() {
+    return state.memory.filter(function (m) {
+      return m.clothing && m.clothing.group === '配件' && m.clothing.type === '手錶';
+    }).map(function (m) { return { id: m.id, name: m.name }; });
   }
 
   function showFormPhoto(url) {
@@ -487,6 +508,7 @@
     if (!newPhoto) resetPhoto();
     else entryPhotoId = null;
     if (!keepTags && !tagsTouched) picker.set(Clothing.empty());
+    syncHeavy();
   }
 
   $('#f-photo').addEventListener('change', function () {
@@ -685,8 +707,8 @@
     if (!tagsTouched && !selectedId) {
       var g = $('#f-cat').value === '必備品' ? Clothing.guess(this.value, norm) : null;
       var cur = picker.get();
-      if (g) picker.set(Object.assign({}, cur, g));
-      else if (cur.group) picker.set(Object.assign({}, cur, { group: '', type: '' }));
+      if (g) picker.apply(g);
+      else if (cur.group) picker.apply({ group: '', type: '', subtype: '' });
     }
     syncClothingBox();
   });
@@ -788,6 +810,7 @@
     resetPhoto();
     picker.set(Clothing.empty());
     tagsTouched = false;
+    syncHeavy();
     photoJob.then(renderMemory);
     renderMemory();
     $('#f-name').focus();
@@ -824,6 +847,7 @@
     dropPhotoIfUnused: dropPhotoIfUnused,
     homes: homes,
     addHome: addHome,
+    watches: watches,
     isCloth: isCloth,
     packedItem: packedItem,
     packEntry: packEntry,

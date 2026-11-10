@@ -83,7 +83,7 @@
         </div>
 
         <div class="row">
-          <label class="grow">重量（每個或每包）
+          <label class="grow" id="f-weight-label">重量（每個或每包）
             <div class="input-unit">
               <span id="f-approx" class="approx" hidden>約</span>
               <input id="f-weight" name="weight" type="number" inputmode="decimal" step="any" min="0" required placeholder="0.3">
@@ -93,6 +93,7 @@
               </select>
             </div>
             <span id="weight-hint" class="weight-hint" hidden></span>
+            <span id="f-heavy-tip" class="heavy-tip" hidden>👟 鞋子比較重，建議秤一下實際重量再填</span>
           </label>
         </div>
 
@@ -171,16 +172,22 @@
             <input id="cf-name" maxlength="40" placeholder="選好種類會自動帶入，例如：白襯衫">
           </label>
           <div id="cf-tags"></div>
-          <label>重量
+          <label id="cf-weight-label">重量
             <div class="input-unit">
               <span id="cf-approx" class="approx" hidden>約</span>
               <input id="cf-weight" type="number" inputmode="decimal" step="any" min="0" placeholder="選好種類會自動帶入">
               <span class="unit-text">g</span>
             </div>
+            <span id="cf-heavy-tip" class="heavy-tip" hidden>👟 鞋子比較重，建議秤一下實際重量再填</span>
           </label>
         </div>
 
         <button type="submit" class="btn primary">儲存</button>
+
+        <div id="cf-straps" class="card straps-box" hidden>
+          <div class="field-title">可以搭配的錶帶</div>
+          <div id="cf-straps-list" class="pick-strip"></div>
+        </div>
 
         <div id="cf-extra" hidden>
           <div class="card pack-box">

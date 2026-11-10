@@ -24,7 +24,7 @@
   }
 
   function refWeight(tags) {
-    var ref = App.findRef(C.typeName(tags));
+    var ref = App.findRef(C.refName(tags)) || App.findRef(tags.group);
     return ref ? ref.weight : 0.2;
   }
 
@@ -49,7 +49,17 @@
         (g.name ? esc(shortGroup(g.name)) : '全部') + '<small>' + n + '</small></button>';
     }).join('');
 
-    $('#closet-f-color').innerHTML = chipRow(C.COLORS, fColor, 'data-fcolor', '全部', true);
+    // 顏色篩選：只列出目前分頁裡有用到的顏色
+    var used = [];
+    all.forEach(function (m) {
+      if (tab && m.clothing.group !== tab) return;
+      (m.clothing.colors || []).forEach(function (c) { if (used.indexOf(c) < 0) used.push(c); });
+    });
+    var colorOpts = C.ALL_COLORS.filter(function (c) { return used.indexOf(c) >= 0; })
+      .concat(used.filter(function (c) { return C.ALL_COLORS.indexOf(c) < 0; }));
+    if (fColor && colorOpts.indexOf(fColor) < 0) fColor = '';
+    $('#closet-f-color').parentElement.hidden = !colorOpts.length;
+    $('#closet-f-color').innerHTML = chipRow(colorOpts, fColor, 'data-fcolor', '全部', true);
     $('#closet-f-season').innerHTML = chipRow(C.SEASONS, fSeason, 'data-fseason', '全部');
     $('#closet-f-style').innerHTML = chipRow(C.STYLES, fStyle, 'data-fstyle', '全部');
     // 家：清單裡的每個家；有衣服還沒設定家的話，多一個「未設定」
@@ -165,14 +175,45 @@
     brands: App.allBrands,
     homes: App.homes,
     addHome: App.addHome,
+    watches: function () {
+      // 編輯手錶時，不列出自己
+      return App.watches().filter(function (w) { return w.id !== editing; });
+    },
     onChange: function (tags, key) {
-      if (key !== 'group' && key !== 'type') return;
+      syncHeavy();
+      if (key !== 'group' && key !== 'type' && key !== 'subtype') return;
       var tn = C.typeName(tags);
       var nameEl = $('#cf-name');
       if (tn && (!nameEl.value.trim() || nameEl.value === autoName)) nameEl.value = autoName = tn;
       if (!weightByUser && tn) setWeight(refWeight(tags), true);
     }
   });
+
+  // 鞋子很重：重量欄位特別顯眼
+  function syncHeavy() {
+    var heavy = picker.get().group === '鞋子';
+    $('#cf-weight-label').classList.toggle('weight-strong', heavy);
+    $('#cf-heavy-tip').hidden = !heavy;
+  }
+
+  // 手錶的詳細頁：列出可以搭配的錶帶
+  function renderStraps(m) {
+    var box = $('#cf-straps');
+    var isWatch = m && m.clothing && m.clothing.group === '配件' && m.clothing.type === '手錶';
+    var straps = isWatch ? st().memory.filter(function (x) {
+      return x.clothing && x.clothing.type === '錶帶' && (x.clothing.fitsWatches || []).indexOf(m.id) >= 0;
+    }) : [];
+    box.hidden = !isWatch;
+    if (!isWatch) return;
+    $('#cf-straps-list').innerHTML = straps.length ? straps.map(function (x) {
+      var c = x.clothing;
+      return '<a class="pick-tile" href="#closet/' + encodeURIComponent(x.id) + '">' +
+        '<span class="pick-ph">' + (x.photoId ? '<img data-photo="' + esc(x.photoId) + '" alt="">' : '') + '</span>' +
+        '<span class="pick-name">' + esc(x.name) + '</span>' +
+        '<span class="pick-home">' + esc([c.material, (c.colors || []).join('/')].filter(Boolean).join('・') || ' ') + '</span></a>';
+    }).join('') : '<p class="muted small">還沒有錶帶。新增錶帶時，在「適用手錶」選這支手錶，就會顯示在這裡。</p>';
+    Photos.fillThumbs($('#cf-straps-list'));
+  }
 
   function setWeight(kg, approx) {
     $('#cf-weight').value = kg == null ? '' : Math.round(kg * 1000);
@@ -254,6 +295,8 @@
 
     $('#cf-extra').hidden = !m;
     if (m) renderPack();
+    renderStraps(m);
+    syncHeavy();
   }
 
   $('#closet-form').addEventListener('submit', function (e) {

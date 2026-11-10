@@ -578,3 +578,23 @@ input:focus, select:focus { outline: 2px solid var(--primary); outline-offset: -
   .sheet { align-items: center; }
   .sheet-panel { border-radius: 20px; }
 }
+
+/* ---------- 種類專屬選項 ---------- */
+.weight-strong {
+  padding: 10px 12px;
+  border: 2px solid #f59e0b;
+  border-radius: 12px;
+  background: #fffbeb;
+  color: #92400e !important;
+  font-weight: 700;
+  font-size: 1rem !important;
+}
+.weight-strong input { font-size: 1.25rem; font-weight: 700; border-color: #f59e0b; }
+.heavy-tip { display: block; margin-top: 6px; font-size: 0.85rem; color: #b45309; font-weight: 700; }
+.inline-cm { display: block; margin: -6px 0 16px; font-size: 0.85rem; color: var(--muted); }
+.cm-row { display: flex; align-items: center; gap: 6px; max-width: 240px; }
+.cm-row .unit-text { white-space: nowrap; flex: none; }
+.cm-row input { margin-top: 4px; }
+.field-note { margin: -2px 0 14px; }
+.straps-box { margin-top: 14px; }
+a.pick-tile { text-decoration: none; }
