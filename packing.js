@@ -292,7 +292,7 @@
     var m = e.catalogId && App.entryById(e.catalogId);
     if (on && !e.checked) {
       var bagId = list.zones[e.zone].bagId;
-      if (m && App.isCloth(m)) App.markPacked(m, bagId);
+      if (m) App.markPacked(m, bagId);
       var it = { id: App.uid(), name: e.name, weight: e.weight, qty: e.qty, unit: e.unit, category: e.category, bagId: bagId, catalogId: e.catalogId || undefined };
       s.items.push(it);
       if (m) m.uses = (m.uses || 0) + 1;
@@ -300,8 +300,8 @@
     } else if (!on && e.checked) {
       var id = e.itemId;
       e.checked = false; e.itemId = null;
-      if (m && App.isCloth(m)) App.unpackEntry(m);   // 衣物：位置回到原本的家
       s.items = s.items.filter(function (x) { return x.id !== id; });
+      if (m) App.restoreHome(m);   // 位置回到原本的家
     }
     touch(list);
   }
@@ -314,7 +314,7 @@
       var it = st().items.find(function (x) { return x.id === e.itemId; });
       if (it) it.bagId = bagId;
       var m = e.catalogId && App.entryById(e.catalogId);
-      if (m && App.isCloth(m)) App.markPacked(m, bagId);
+      if (m) App.markPacked(m, bagId);
     }
     touch(list);
   }

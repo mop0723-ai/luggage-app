@@ -87,7 +87,7 @@
     $('#org-title').textContent = '整理行李：' + (cur.last ? '回到' : '抵達') + cur.home + '的家';
     $('#org-sub').textContent = cur.trip.name + '・' + window.Trips.fmtDate(cur.date) +
       (cur.last ? '・旅程最後一段' : '・下一站：' + (cur.trip.legs[cur.index + 1] ? cur.trip.legs[cur.index + 1].to || '下一段' : ''));
-    $('#org-home-title').textContent = cur.home + '衣櫃裡的物品（勾選要帶去下一站的）';
+    $('#org-home-title').textContent = cur.home + '的衣櫃和抽屜裡的物品（勾選要帶去下一站的）';
     $('#org-bag').innerHTML = st().bags.map(function (b) { return '<option value="' + esc(b.id) + '">' + esc(b.name) + '</option>'; }).join('');
     render();
     $('#org-sheet').hidden = false;
@@ -120,7 +120,7 @@
         '<span class="org-check">' + (on ? '✓' : '') + '</span>' + thumb(m) +
         '<span class="org-info"><span class="org-name">' + esc(m.name) + '</span>' +
         '<span class="muted small">' + esc(App.fmtWeight(m.weight || 0)) + '</span></span></button>';
-    }).join('') : '<p class="muted small">' + esc(cur.home) + '的衣櫃裡目前沒有衣物。</p>';
+    }).join('') : '<p class="muted small">' + esc(cur.home) + '的衣櫃和抽屜裡目前沒有東西。</p>';
     Photos.fillThumbs($('#org-sheet'));
     summary();
   }

@@ -261,6 +261,44 @@
       </div>
     </section>
 
+    <!-- 我的抽屜 -->
+    <section id="view-drawer" class="view" hidden>
+      <div class="page-head"><h1>我的抽屜</h1></div>
+      <div id="dr-tabs" class="tabs"></div>
+
+      <form id="dr-add" class="card form dr-add" autocomplete="off">
+        <div class="dr-add-row">
+          <input id="dr-name" maxlength="40" list="dr-names" placeholder="新增物品，例如：泡麵、面膜、護照" enterkeyhint="done">
+          <datalist id="dr-names"></datalist>
+          <button type="submit" class="btn primary dr-add-btn">加入</button>
+        </div>
+        <div id="dr-dup" class="dr-dup" hidden>
+          <span id="dr-dup-text"></span>
+          <button type="button" id="dr-dup-plus" class="btn ghost small-btn">改成數量加上去</button>
+        </div>
+        <div id="dr-add-more" hidden>
+          <div class="field-title">放在哪個家</div>
+          <div id="dr-add-homes" class="chips"></div>
+          <div class="dr-add-grid">
+            <label>品類<select id="dr-add-cat"></select></label>
+            <label>重量（每個／每包）
+              <span class="input-unit"><span id="dr-add-approx" class="approx" hidden>約</span><input id="dr-add-weight" type="number" inputmode="decimal" min="0" step="any" placeholder="g"><span class="unit-text">g</span></span>
+            </label>
+            <label>數量 <span class="muted">（可不填）</span>
+              <span class="dr-qty dr-add-qty">
+                <button type="button" class="dr-step" data-add-step="-1" aria-label="減少">－</button>
+                <input id="dr-add-qty" type="number" inputmode="numeric" min="0" step="1" placeholder="—">
+                <button type="button" class="dr-step" data-add-step="1" aria-label="增加">＋</button>
+              </span>
+            </label>
+            <label>單位<select id="dr-add-unit"></select></label>
+          </div>
+        </div>
+      </form>
+
+      <div id="dr-list"></div>
+    </section>
+
     <!-- 我的衣櫃 -->
     <section id="view-closet" class="view" hidden>
       <div id="closet-list">
@@ -359,6 +397,9 @@
     <a href="#closet" data-view="closet">
       <svg class="ico" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7.5V7a2 2 0 1 0-2-2"/><path d="M12 7.5 3 15a1.6 1.6 0 0 0 1 3h16a1.6 1.6 0 0 0 1-3z"/></svg><span>我的衣櫃</span>
     </a>
+    <a href="#drawer" data-view="drawer">
+      <svg class="ico" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 12h16"/><path d="M10 7.5h4"/><path d="M10 16.5h4"/></svg><span>我的抽屜</span>
+    </a>
   </nav>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -409,6 +450,48 @@
       <div class="sheet-title">出發前檢查</div>
       <div id="pk-check-body"></div>
       <button type="button" id="pk-check-close" class="btn primary">關閉</button>
+    </div>
+  </div>
+
+  <!-- 抽屜物品詳細 -->
+  <div id="dr-sheet" class="sheet" hidden>
+    <div class="sheet-panel org-panel form" role="dialog" aria-modal="true">
+      <div class="sheet-title">抽屜物品</div>
+      <label>名稱<input id="drd-name" maxlength="40"></label>
+      <div class="dr-add-grid">
+        <label>品類<select id="drd-cat"></select></label>
+        <label>重量（每個／每包）<span class="input-unit"><input id="drd-weight" type="number" inputmode="decimal" min="0" step="any"><span class="unit-text">g</span></span></label>
+      </div>
+      <div class="field-title">數量</div>
+      <div id="drd-mode" class="seg dr-mode"></div>
+      <div id="drd-count-wrap">
+        <div class="dr-qty dr-qty-big">
+          <button type="button" class="dr-step" data-drd-step="-1" aria-label="減少">－</button>
+          <span id="drd-count" class="dr-num"></span>
+          <button type="button" class="dr-step" data-drd-step="1" aria-label="增加">＋</button>
+        </div>
+        <div id="drd-unit" class="chips dr-units"></div>
+      </div>
+      <div id="drd-stock" class="seg dr-stock dr-stock-big"></div>
+
+      <div class="field-title">目前位置</div>
+      <div id="drd-loc" class="loc-now"></div>
+      <div class="field-title">移動紀錄</div>
+      <div id="drd-moves" class="loc-moves muted"></div>
+      <div class="field-title">移到另一個家</div>
+      <div id="drd-homes" class="chips"></div>
+
+      <div class="field-title">放進行李</div>
+      <div class="pack-box-row">
+        <select id="drd-bag" aria-label="放在哪個行李"></select>
+        <button type="button" id="drd-pack" class="btn ghost pack-btn">放進行李</button>
+      </div>
+
+      <div class="cloud-btns dr-foot">
+        <button type="button" id="drd-close" class="btn ghost">關閉</button>
+        <button type="button" id="drd-save" class="btn primary">儲存</button>
+      </div>
+      <button type="button" id="drd-delete" class="btn danger">從抽屜刪除</button>
     </div>
   </div>
 
@@ -474,6 +557,7 @@
   <script src="trips.js"></script>
   <script src="organize.js"></script>
   <script src="packing.js"></script>
+  <script src="drawer.js"></script>
   <script src="backup.js"></script>
   <script src="vendor/supabase.js"></script>
   <script src="cloud.js"></script>

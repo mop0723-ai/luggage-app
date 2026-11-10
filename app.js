@@ -40,7 +40,10 @@
    *            createdAt, updatedAt,
    *            cloudId, syncedAt,  預留：雲端儲存
    *            ai,                 預留：AI 辨識結果 { colors, pattern, group, type, confidence, model, at }
-   *            location, moves }   衣物的位置與移動紀錄（見下方「物品位置」）
+   *            location, moves,    位置與移動紀錄（見下方「物品位置」；衣物和抽屜物品都有）
+   *            home,               抽屜物品放在哪個家（衣物記在 clothing.home）
+   *            count, countUnit,   抽屜物品的數量（例如 5、'片'）；用「有／快用完／沒了」時 count 是 null
+   *            stock }             'have' 有、'low' 快用完、'out' 沒了
    * outfits 預留：模擬穿搭 { id, date, place, weather, parts: { top, bottom, full, outer, shoes, accessory[] } }
    * sync    預留：雲端帳號 { userId, lastSyncedAt }
    * homes   「家」的清單，衣服標籤的 clothing.home 會是其中之一
@@ -402,10 +405,7 @@
     var ent = it && it.catalogId && entryById(it.catalogId);
     if (!it || !confirm('要把「' + it.name + '」移出行李嗎？')) return;
     state.items = state.items.filter(function (x) { return x.id !== id; });
-    if (ent && isCloth(ent) && !packedItem(ent)) {
-      var L = ent.location || {};
-      ent.location = { state: 'home', home: L.fromHome || ent.clothing.home || '', since: todayStr() };
-    }
+    restoreHome(ent);
     save();
     renderHome();
   });
@@ -604,11 +604,15 @@
    * m.moves：移動紀錄 [{ home, date }]，例如 曼谷(11/3) → 昆明(11/8)
    * 行李清單（state.items）才是「在不在行李裡」的依據，location 記錄其他細節。
    */
+  // 物品「放在哪個家」：衣物記在 clothing.home，抽屜物品記在 m.home
+  function homeOfEntry(m) { return (isCloth(m) ? m.clothing.home : m.home) || ''; }
+  function setHomeOfEntry(m, h) { if (isCloth(m)) m.clothing.home = h; else m.home = h; }
+
   function locOf(m) {
-    if (!isCloth(m)) return null;
+    if (!m) return null;
     var L = m.location || {};
     var item = packedItem(m);
-    var origin = L.fromHome || (L.state === 'home' ? L.home : '') || m.clothing.home || '';
+    var origin = L.fromHome || (L.state === 'home' ? L.home : '') || homeOfEntry(m);
     if (item) {
       if (L.state === 'pending' && L.home) return { state: 'pending', home: L.home, bagId: item.bagId, fromHome: origin };
       return { state: 'packed', bagId: item.bagId, fromHome: origin };
@@ -616,7 +620,16 @@
     if (L.state === 'home' && L.home) return { state: 'home', home: L.home };
     if (L.state === 'pending' && L.home) return { state: 'home', home: L.home };
     if (L.state === 'packed' && origin) return { state: 'home', home: origin };   // 從行李拿出來了，回到原本的家
-    return m.clothing.home ? { state: 'home', home: m.clothing.home } : { state: 'none' };
+    return homeOfEntry(m) ? { state: 'home', home: homeOfEntry(m) } : { state: 'none' };
+  }
+
+  // 從行李拿出來後：位置回到原本的家（不算一次移動）
+  function restoreHome(m) {
+    if (!m || packedItem(m)) return;
+    var L = m.location || {};
+    if (L.state === 'packed' || L.state === 'pending') {
+      m.location = { state: 'home', home: L.fromHome || homeOfEntry(m), since: todayStr() };
+    }
   }
 
   function locText(loc) {
@@ -652,28 +665,30 @@
 
   // 放進行李：記住從哪個家帶出
   function markPacked(m, bagId) {
-    if (!isCloth(m)) return;
+    if (!m) return;
     var cur = locOf(m);
-    var from = cur.state === 'home' ? cur.home : (cur.fromHome || m.clothing.home || '');
+    var from = cur.state === 'home' ? cur.home : (cur.fromHome || homeOfEntry(m));
     if (from && !(m.moves || []).length) addMove(m, from, '', '');
     m.location = { state: 'packed', bagId: bagId, fromHome: from, since: todayStr() };
   }
 
   // 放在某個家；record 為 true 時記一筆移動紀錄
   function markHome(m, home, date, record) {
-    if (!isCloth(m)) return;
+    if (!m) return;
     var cur = locOf(m);
     var prev = cur.state === 'home' ? cur.home : (cur.fromHome || '');
     m.location = { state: 'home', home: home, since: date || todayStr() };
-    m.clothing.home = home;
+    setHomeOfEntry(m, home);
     if (record && home) addMove(m, home, date || todayStr(), prev);
   }
 
   // 把一件常帶物品（例如衣櫃裡的衣服）放進指定的行李
   function packEntry(m, bagId) {
     markPacked(m, bagId);
+    // 抽屜物品有記數量的話，整份一起帶（例如泡麵 × 3 包）
+    var counted = !isCloth(m) && m.count > 0;
     var item = {
-      id: uid(), name: m.name, weight: m.weight, qty: 1, unit: m.unit || '個',
+      id: uid(), name: m.name, weight: m.weight, qty: counted ? m.count : 1, unit: counted ? (m.countUnit || m.unit || '個') : (m.unit || '個'),
       category: m.category || '必備品', bagId: bagId, catalogId: m.id
     };
     state.items.push(item);
@@ -689,7 +704,7 @@
     state.items = state.items.filter(function (it) { return it.catalogId !== m.id; });
     // 取消打包：回到原本的家（不算一次移動）
     if (cur && cur.state !== 'home' && cur.state !== 'none') {
-      m.location = { state: 'home', home: cur.fromHome || m.clothing.home || '', since: todayStr() };
+      m.location = { state: 'home', home: cur.fromHome || homeOfEntry(m), since: todayStr() };
     }
     save();
   }
@@ -1045,7 +1060,7 @@
       id: uid(), name: name, weight: w, qty: q, unit: unit,
       category: category, bagId: entry.bagId, catalogId: entry.id
     };
-    if (entry.clothing && !packedItem(entry)) markPacked(entry, item.bagId);
+    if (!packedItem(entry)) markPacked(entry, item.bagId);
     state.items.push(item);
 
     var photoJob = Promise.resolve();
@@ -1086,14 +1101,15 @@
   // 網址：#home、#add、#closet（衣櫃）、#closet/new（新增衣服）、#closet/<id>（編輯衣服）
   function route() {
     var parts = location.hash.replace(/^#/, '').split('/');
-    var view = ['add', 'closet', 'trips', 'pack'].indexOf(parts[0]) >= 0 ? parts[0] : 'home';
-    ['home', 'add', 'closet', 'trips', 'pack'].forEach(function (v) { $('#view-' + v).hidden = v !== view; });
+    var view = ['add', 'closet', 'trips', 'pack', 'drawer'].indexOf(parts[0]) >= 0 ? parts[0] : 'home';
+    ['home', 'add', 'closet', 'trips', 'pack', 'drawer'].forEach(function (v) { $('#view-' + v).hidden = v !== view; });
     document.querySelectorAll('.tabbar a').forEach(function (a) {
       a.classList.toggle('on', a.getAttribute('data-view') === view);
     });
     if (view === 'home') renderHome();
     else if (view === 'add') renderAdd();
     else if (view === 'pack') { if (window.Packing) window.Packing.show(); }
+    else if (view === 'drawer') { if (window.Drawer) window.Drawer.show(); }
     else if (view === 'trips') { if (window.Trips) window.Trips.show(decodeURIComponent(parts.slice(1).join('/'))); }
     else if (window.Closet) window.Closet.show(decodeURIComponent(parts.slice(1).join('/')));
     window.scrollTo(0, 0);
@@ -1129,6 +1145,9 @@
     packEntry: packEntry,
     unpackEntry: unpackEntry,
     locOf: locOf,
+    homeOfEntry: homeOfEntry,
+    restoreHome: restoreHome,
+    categories: function () { return CATEGORY_LIST; },
     locText: locText,
     movesText: movesText,
     markPacked: markPacked,
