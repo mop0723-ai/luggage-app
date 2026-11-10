@@ -925,8 +925,3 @@ input[type="date"]::-webkit-date-and-time-value { text-align: left; }
 @media (min-width: 600px) {
   .ask-sheet { align-items: flex-start; padding-top: 18vh; }
 }
-
-/* ---------- 睡衣提醒 ---------- */
-.sleep-reminder { margin: 0 0 14px; padding: 10px 14px; border-radius: var(--radius); background: #eef2ff; color: #3730a3; font-weight: 700; }
-.sleep-reminder .muted { font-weight: 400; margin-left: 4px; }
-.sleep-badge { display: inline-block; margin-top: 8px; padding: 4px 10px; border-radius: 999px; background: #eef2ff; color: #3730a3; font-size: 0.85rem; font-weight: 700; }
