@@ -72,6 +72,7 @@
   var cur = null;        // 目前整理的抵達點
   var choice = {};       // 行李物品 id → 'stay' 留下／'go' 帶走
   var picked = {};       // 這個家衣櫃裡要帶走的物品 id
+  var swap = {};         // 換行李箱：舊行李箱 id → 這個家的另一個行李箱 id
 
   function thumb(m) {
     return m && m.photoId ? '<img class="org-thumb" data-photo="' + esc(m.photoId) + '" alt="">' : '<span class="org-thumb none"></span>';
@@ -82,8 +83,13 @@
     if (!cur) return;
     choice = {};
     picked = {};
+    swap = {};
     // 回到旅程終點的家：預設全部留下；中途：預設繼續帶走
-    st().items.forEach(function (it) { choice[it.id] = cur.last ? 'stay' : 'go'; });
+    // 購物時選了「之後放到這個家」的，預設留下
+    st().items.forEach(function (it) {
+      var info = window.Shop && window.Shop.itemInfo(it);
+      choice[it.id] = cur.last || (info && info.homeDest === cur.home) ? 'stay' : 'go';
+    });
     $('#org-title').textContent = '整理行李：' + (cur.last ? '回到' : '抵達') + cur.home + '的家';
     $('#org-sub').textContent = cur.trip.name + '・' + window.Trips.fmtDate(cur.date) +
       (cur.last ? '・旅程最後一段' : '・下一站：' + (cur.trip.legs[cur.index + 1] ? cur.trip.legs[cur.index + 1].to || '下一段' : ''));
@@ -100,14 +106,19 @@
       var m = it.catalogId && App.entryById(it.catalogId);
       var bag = App.bagById(it.bagId);
       var c = choice[it.id];
+      var info = window.Shop && window.Shop.itemInfo(it);
+      var tag = info && info.kind === 'buy' ? (info.homeDest ? '・要放到' + info.homeDest + '的家' : '・旅途中買的') :
+        info && info.kind === 'gift' ? (info.rec.to ? '・給' + info.rec.to : '・禮物') : '';
       return '<div class="org-row">' + thumb(m) +
-        '<div class="org-info"><div class="org-name">' + esc(it.name) + (it.qty > 1 ? ' × ' + it.qty : '') + '</div>' +
-        '<div class="muted small">' + esc(bag ? bag.name : '行李') + (m && App.locOf(m) && App.locOf(m).fromHome ? '・從' + esc(App.locOf(m).fromHome) + '帶出' : '') + '</div></div>' +
+        '<div class="org-info"><div class="org-name">' + (it.giftId ? App.GIFT_ICON : '') + (it.purchaseId ? '<span class="bp-buy">購</span>' : '') + esc(it.name) + (it.qty > 1 ? ' × ' + it.qty : '') + '</div>' +
+        '<div class="muted small">' + esc(bag ? bag.name : '行李') + (m && App.locOf(m) && App.locOf(m).fromHome ? '・從' + esc(App.locOf(m).fromHome) + '帶出' : '') + esc(tag) + '</div></div>' +
         '<div class="seg org-seg">' +
         '<button type="button" data-org-item="' + esc(it.id) + '" data-choice="stay" class="' + (c === 'stay' ? 'on' : '') + '">留在' + esc(cur.home) + '</button>' +
         '<button type="button" data-org-item="' + esc(it.id) + '" data-choice="go" class="' + (c === 'go' ? 'on' : '') + '">繼續帶走</button>' +
         '</div></div>';
     }).join('') : '<p class="muted small">行李裡沒有東西。</p>';
+
+    renderSwap();
 
     var atHome = st().memory.filter(function (m) {
       var loc = App.locOf(m);
@@ -123,6 +134,26 @@
     }).join('') : '<p class="muted small">' + esc(cur.home) + '的衣櫃和抽屜裡目前沒有東西。</p>';
     Photos.fillThumbs($('#org-sheet'));
     summary();
+  }
+
+  // 換行李箱：正在用的行李箱，可以換成這個家另一個空的同類型行李箱（舊的留在這裡）
+  function renderSwap() {
+    var bags = st().bags;
+    var used = bags.filter(function (b) { return st().items.some(function (it) { return it.bagId === b.id && choice[it.id] !== 'stay'; }); });
+    var html = used.map(function (b) {
+      var opts = bags.filter(function (x) {
+        return x.id !== b.id && x.kind === b.kind && x.home === cur.home && App.bagLocOf(x).state !== 'out' &&
+          !Object.keys(swap).some(function (k) { return k !== b.id && swap[k] === x.id; });
+      });
+      if (!opts.length) return '';
+      return '<label class="org-bag-row org-swap-row"><span>' + esc(b.name) + '</span>' +
+        '<select data-org-swap="' + esc(b.id) + '"><option value="">繼續用這個</option>' +
+        opts.map(function (x) {
+          return '<option value="' + esc(x.id) + '"' + (swap[b.id] === x.id ? ' selected' : '') + '>換成「' + esc(x.name) + '」' + (x.size ? '（' + esc(x.size) + '）' : '') + '</option>';
+        }).join('') + '</select></label>';
+    }).join('');
+    $('#org-swap-wrap').hidden = !html;
+    $('#org-swap').innerHTML = html;
   }
 
   function summary() {
@@ -145,19 +176,29 @@
       return;
     }
     if (t.id === 'org-ok') { confirmAll(); return; }
+    if (t.closest('[data-org-swap]')) return;
     if (t.id === 'org-later' || t.id === 'org-sheet') { $('#org-sheet').hidden = true; }
+  });
+
+  $('#org-sheet').addEventListener('change', function (e) {
+    var el = e.target.closest('[data-org-swap]');
+    if (!el) return;
+    if (el.value) swap[el.getAttribute('data-org-swap')] = el.value; else delete swap[el.getAttribute('data-org-swap')];
+    render();
   });
 
   function confirmAll() {
     var s = st();
     var stayed = 0, added = 0;
     var bagId = $('#org-bag').value;
+    var hadItems = s.bags.filter(function (b) { return s.items.some(function (it) { return it.bagId === b.id; }); });
     // 1. 行李裡的物品：留下的拿出行李、放在這個家；帶走的維持在行李裡
     var stayIds = Object.keys(choice).filter(function (k) { return choice[k] === 'stay'; });
     var stayItems = s.items.filter(function (it) { return stayIds.indexOf(it.id) >= 0; });
     s.items = s.items.filter(function (it) { return stayIds.indexOf(it.id) < 0; });
     stayItems.forEach(function (it) {
       stayed++;
+      if (window.Shop) window.Shop.leftAtHome(it, cur.home, cur.date);   // 購物放進這個家的抽屜、禮物記成在這個家
       var m = it.catalogId && App.entryById(it.catalogId);
       if (m && App.locOf(m) && !s.items.some(function (x) { return x.catalogId === m.id; })) {
         App.markHome(m, cur.home, cur.date, true);
@@ -167,7 +208,19 @@
       var loc = App.locOf(m);
       if (loc && loc.state === 'pending') m.location.state = 'packed';   // 繼續帶走
     });
-    // 2. 這個家衣櫃裡勾選的：放進行李
+    // 2. 換行李箱：東西搬到這個家的另一個箱子，舊箱子留在這裡
+    var swapped = 0;
+    Object.keys(swap).forEach(function (oldId) {
+      var nb = App.bagById(swap[oldId]), ob = App.bagById(oldId);
+      if (!nb || !ob || !s.items.some(function (it) { return it.bagId === oldId; })) return;
+      App.moveBagContents(oldId, nb.id);
+      ob.home = cur.home;
+      swapped++;
+    });
+    if (swap[bagId]) bagId = swap[bagId];
+    // 清空的行李箱就放在這個家
+    hadItems.forEach(function (b) { if (!s.items.some(function (it) { return it.bagId === b.id; })) b.home = cur.home; });
+    // 3. 這個家衣櫃裡勾選的：放進行李
     Object.keys(picked).forEach(function (id) {
       if (!picked[id]) return;
       var m = App.entryById(id);
@@ -177,7 +230,7 @@
     cur.leg.arrivalPrompted = true;
     App.save();
     $('#org-sheet').hidden = true;
-    App.toast('整理好了：留下 ' + stayed + ' 件、新放進行李 ' + added + ' 件');
+    App.toast('整理好了：留下 ' + stayed + ' 件、新放進行李 ' + added + ' 件' + (swapped ? '、換了 ' + swapped + ' 個行李箱' : ''));
     App.refreshView();
   }
 

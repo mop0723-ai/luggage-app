@@ -49,6 +49,11 @@
    * homes   「家」的清單，衣服標籤的 clothing.home 會是其中之一
    * customOptions  在「其他」自己輸入過的選項：{ 'colors@配件/皮帶': ['酒紅'], … }
    * packLists  打包清單，每趟旅程一份（格式見 packing.js）
+   * bags 也是「我的行李箱」：另有 size 尺寸、style 款式、material 材質、home 放在哪個家、photoId／photoPath 照片
+   *          位置：箱子裡有東西＝跟著旅程出門；空的＝在它的家
+   * shopping  回程購物：{ plans[], purchases[], ratio{ 旅程 id: 計畫購物佔比 0–1 } }（格式見 shop.js）
+   * gifts     送禮：[{ id, name, weight, qty, to, city, tripId, status, source, … }]（格式見 shop.js）
+   *          行李清單（items）裡的 giftId／purchaseId 連到禮物或購物紀錄
    * legacyWardrobe 上一版衣櫃的原始資料，留著備份
    * trips  旅程：{ id, name, origin, endHome, legs[], createdAt, updatedAt,
    *            endHome：最後一段結束後回到哪個家（null＝還沒設定，依最後一段抵達城市判斷；''＝未定／不回家）
@@ -93,6 +98,18 @@
     return 'checked';
   }
   var BAG_KINDS = [['checked', '托運'], ['carry', '手提'], ['personal', '背包']];
+
+  // 行李箱的欄位
+  function normalizeBag(b) {
+    if (!b.id) b.id = uid();
+    if (!b.kind) b.kind = guessBagKind(b.name);
+    ['size', 'style', 'material', 'home'].forEach(function (k) { if (b[k] == null) b[k] = ''; });
+    if (b.tare == null) b.tare = 0;
+    if (b.limit == null) b.limit = b.kind === 'checked' ? 23 : 7;
+    if (b.photoId === undefined) b.photoId = null;
+    if (b.photoPath === undefined) b.photoPath = null;
+    return b;
+  }
 
   function normalizeTrip(t) {
     if (!t.id) t.id = uid();
@@ -183,6 +200,12 @@
     if (!Array.isArray(s.homes)) s.homes = DEFAULT_HOMES.slice();
     if (!s.customOptions || typeof s.customOptions !== 'object') s.customOptions = {};
     if (!Array.isArray(s.packLists)) s.packLists = [];
+    s.bags.forEach(normalizeBag);
+    if (!s.shopping || typeof s.shopping !== 'object') s.shopping = {};
+    if (!Array.isArray(s.shopping.plans)) s.shopping.plans = [];
+    if (!Array.isArray(s.shopping.purchases)) s.shopping.purchases = [];
+    if (!s.shopping.ratio || typeof s.shopping.ratio !== 'object') s.shopping.ratio = {};
+    if (!Array.isArray(s.gifts)) s.gifts = [];
     if (!Array.isArray(s.trips)) s.trips = [];
     s.trips.forEach(normalizeTrip);
     s.bags.forEach(function (b) { if (!b.kind) b.kind = guessBagKind(b.name); });
@@ -358,20 +381,49 @@
   // ---------- 首頁 ----------
   var openBag = null;   // 展開中的行李
 
-  function renderHome() {
+  // 剩餘公斤數：行李裡的東西（打包、購物、還在行李裡的禮物）＋打包清單上還沒收好的，對比下一段航班的額度
+  function remainInfo() {
     var next = nextLeg();
     var limits = bagLimits(next);
     var total = 0, limit = 0;
-    // 打包清單上「要帶但還沒收好」的重量也算進去
     var pend = window.Packing ? window.Packing.pendingByBag() : {};
-    function pendOf(b) { return pend[b.id] || { weight: 0, count: 0 }; }
-    state.bags.forEach(function (b) { total += bagLoad(b) + pendOf(b).weight; });
+    state.bags.forEach(function (b) { total += bagLoad(b) + (pend[b.id] ? pend[b.id].weight : 0); });
     // 總上限：每種額度各算一次（有填就用航班額度，沒填就加總那類行李自己的上限）
     BAG_KINDS.forEach(function (k) {
       var a = next ? allowanceOf(next.leg, k[0]) : null;
       if (a != null) limit += a;
       else state.bags.forEach(function (b) { if (b.kind === k[0]) limit += limits[b.id]; });
     });
+    return { next: next, limits: limits, pend: pend, total: total, limit: limit, remain: next ? limit - total : null };
+  }
+
+  // 箱子裡的東西搬到另一個箱子（換行李箱）
+  function moveBagContents(oldId, newId) {
+    if (!oldId || !newId || oldId === newId) return;
+    state.items.forEach(function (it) {
+      if (it.bagId !== oldId) return;
+      it.bagId = newId;
+      var m = it.catalogId && entryById(it.catalogId);
+      if (m) markPacked(m, newId);
+    });
+    (state.packLists || []).forEach(function (l) {
+      Object.keys(l.zones || {}).forEach(function (z) { if (l.zones[z].bagId === oldId) l.zones[z].bagId = newId; });
+    });
+  }
+
+  // 行李箱的位置：裡面有東西＝跟著旅程出門；空的＝在它的家
+  function bagLocOf(b) {
+    var n = state.items.filter(function (it) { return it.bagId === b.id; }).length;
+    if (n) return { state: 'out', count: n, fromHome: b.home || '' };
+    return b.home ? { state: 'home', home: b.home } : { state: 'none' };
+  }
+
+  function renderHome() {
+    var info = remainInfo();
+    var next = info.next, limits = info.limits, total = info.total, limit = info.limit;
+    var pend = info.pend;
+    function pendOf(b) { return pend[b.id] || { weight: 0, count: 0 }; }
+    if (window.Shop) window.Shop.renderHomeBits();
     var noTrips = !state.trips.length;
     $('#first-trip').hidden = !noTrips;
     $('#allow-block').hidden = noTrips;
@@ -419,7 +471,7 @@
   function bagPanel(b, items, pending, next) {
     var rows = items.map(function (it) {
       return { kind: 'item', id: it.id, name: it.name, qty: it.qty, unit: it.unit, weight: it.weight * it.qty,
-        category: it.category, catalogId: it.catalogId, done: true };
+        category: it.giftId ? '禮物' : it.category, catalogId: it.catalogId, done: true, gift: !!it.giftId, buy: !!it.purchaseId };
     }).concat(pending.map(function (e) {
       return { kind: 'entry', id: e.id, name: e.name, qty: e.qty, unit: e.unit, weight: e.weight * e.qty,
         category: e.category, catalogId: e.catalogId, done: false };
@@ -434,7 +486,7 @@
         return '<div class="bp-row' + (r.done ? ' done' : '') + '">' +
           '<button type="button" class="bp-check" data-bp-check="' + r.kind + ':' + esc(r.id) + '" aria-label="' + (r.done ? '取消收好' : '收好了') + '">' + (r.done ? '✓' : '') + '</button>' +
           (m && m.photoId ? '<img class="bp-thumb" data-photo="' + esc(m.photoId) + '" alt="">' : '') +
-          '<span class="bp-name">' + esc(r.name) + (r.qty > 1 ? ' <span class="muted">× ' + r.qty + ' ' + esc(r.unit || '') + '</span>' : '') + '</span>' +
+          '<span class="bp-name">' + (r.gift ? GIFT_ICON : '') + (r.buy ? '<span class="bp-buy" title="旅途中買的">購</span>' : '') + esc(r.name) + (r.qty > 1 ? ' <span class="muted">× ' + r.qty + ' ' + esc(r.unit || '') + '</span>' : '') + '</span>' +
           '<span class="bp-w">' + fmtWeight(r.weight) + '</span>' +
           (others.length ? '<select class="bp-move" data-bp-move="' + r.kind + ':' + esc(r.id) + '" aria-label="移到別的行李"><option value="">移到…</option>' +
             others.map(function (x) { return '<option value="' + esc(x.id) + '">' + esc(x.name) + '</option>'; }).join('') + '</select>' : '') +
@@ -447,6 +499,8 @@
       (rows.length ? groups : '<p class="muted small">還沒有東西。</p>') +
       '<button type="button" class="btn ghost bp-more" data-more="' + esc(b.id) + '">＋ 放進更多東西</button></div>';
   }
+
+  var GIFT_ICON = '<svg class="gift-ico" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-label="禮物"><rect x="4" y="9" width="16" height="11" rx="1"/><path d="M3 9h18"/><path d="M12 9v11"/><path d="M12 9c-1.5-3-5-3.5-5-1.2C7 9 12 9 12 9z"/><path d="M12 9c1.5-3 5-3.5 5-1.2C17 9 12 9 12 9z"/></svg>';
 
   function splitRef(v) { var i = v.indexOf(':'); return { kind: v.slice(0, i), id: v.slice(i + 1) }; }
 
@@ -1135,7 +1189,7 @@
   // 網址：#home、#add、#closet（衣櫃）、#closet/new（新增衣服）、#closet/<id>（編輯衣服）
   function route() {
     var parts = location.hash.replace(/^#/, '').split('/');
-    var VIEWS = ['home', 'add', 'closet', 'trips', 'pack', 'drawer', 'shop'];
+    var VIEWS = ['home', 'add', 'closet', 'trips', 'pack', 'drawer', 'shop', 'bags'];
     var view = VIEWS.indexOf(parts[0]) >= 0 ? parts[0] : 'home';
     VIEWS.forEach(function (v) { $('#view-' + v).hidden = v !== view; });
     document.querySelectorAll('.tabbar a').forEach(function (a) {
@@ -1145,6 +1199,8 @@
     else if (view === 'add') renderAdd();
     else if (view === 'pack') { if (window.Packing) window.Packing.show(); }
     else if (view === 'drawer') { if (window.Drawer) window.Drawer.show(); }
+    else if (view === 'shop') { if (window.Shop) window.Shop.show(parts[1]); }
+    else if (view === 'bags') { if (window.Bags) window.Bags.show(); }
     else if (view === 'trips') { if (window.Trips) window.Trips.show(decodeURIComponent(parts.slice(1).join('/'))); }
     else if (window.Closet) window.Closet.show(decodeURIComponent(parts.slice(1).join('/')));
     window.scrollTo(0, 0);
@@ -1159,6 +1215,12 @@
     save: save,
     toast: toast,
     renderHome: renderHome,
+    remainInfo: remainInfo,
+    normalizeBag: normalizeBag,
+    moveBagContents: moveBagContents,
+    bagLocOf: bagLocOf,
+    bagKinds: function () { return BAG_KINDS; },
+    GIFT_ICON: GIFT_ICON,
     esc: esc,
     uid: uid,
     fmtWeight: fmtWeight,

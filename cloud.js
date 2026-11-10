@@ -127,7 +127,8 @@
   // iPad 上另外在 IndexedDB 留一份暫存（打開快、沒網路也看得到）。
   function pathFor(uid, id) { return uid + '/' + id + '.jpg'; }
   function tagFor(path) { return BUCKET + '/' + path; }   // 暫存裡記下「已在新空間」
-  function withPhoto() { return App.state().memory.filter(function (m) { return m.photoId; }); }
+  // 有照片的資料：衣櫃／抽屜物品，加上行李箱
+  function withPhoto() { return App.state().memory.concat(App.state().bags || []).filter(function (m) { return m.photoId; }); }
 
   // 確認照片真的在雲端、而且大小正確
   function verify(path, size) {

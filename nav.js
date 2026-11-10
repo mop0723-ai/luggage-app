@@ -18,6 +18,7 @@
       closePlus();
       var focus = a.getAttribute('data-focus');
       if (focus) setTimeout(function () { var el = document.getElementById(focus); if (el) el.focus(); }, 300);
+      if (a.hasAttribute('data-plus-buy')) setTimeout(function () { if (window.Shop) window.Shop.openBuy(null); }, 300);
       return;
     }
     if (e.target.id === 'plus-sheet' || e.target.id === 'plus-close') closePlus();

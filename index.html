@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@300;400;600&display=swap">
-  <link rel="stylesheet" href="style.css?v=20261110b">
+  <link rel="stylesheet" href="style.css?v=20261111a">
 </head>
 <body>
   <main>
@@ -24,6 +24,7 @@
         <div class="remain-value"><span id="remain-num">0.0</span><small> kg</small></div>
         <div id="remain-status" class="remain-status">充裕</div>
       </div>
+      <a id="shop-entry" class="shop-entry" href="#shop"><span><b>回程購物・送禮</b><span id="shop-entry-sub" class="muted small"></span></span><span class="shop-entry-go" aria-hidden="true">›</span></a>
 
       <div id="first-trip" class="first-trip" hidden>
         <p>行李額度會自動讀取「行程」裡下一段航班的托運、手提、背包額度。</p>
@@ -31,6 +32,7 @@
       </div>
 
       <div id="arrival-banner" class="card arrival-banner" hidden></div>
+      <div id="gift-banner" class="card arrival-banner gift-banner" hidden></div>
 
       <section id="allow-block" class="home-sec">
         <div class="sec-head"><span class="eyebrow">ALLOWANCE</span><a id="limit-link" class="link small" href="#trips"><span id="limit-link-text">修改額度</span></a></div>
@@ -44,11 +46,6 @@
       <section id="bags-block" class="home-sec">
         <div class="sec-head"><span class="eyebrow">LUGGAGE</span><span class="sec-title">我的行李</span></div>
         <div id="bag-list"></div>
-      </section>
-
-      <section class="home-sec">
-        <div class="sec-head"><span class="eyebrow">SHOPPING</span><span class="sec-title">回程購物</span></div>
-        <a class="row-link" href="#shop"><span>記一筆在旅途中買的東西</span><span class="muted small">即將推出 ›</span></a>
       </section>
 
       <section class="home-sec">
@@ -238,6 +235,7 @@
 
     <!-- 打包清單 -->
     <section id="view-pack" class="view" hidden>
+      <div class="home-switch"><a href="#pack" class="on">打包清單</a><a href="#bags">我的行李箱</a></div>
       <div class="page-head"><h1 data-en="PACKING">打包清單</h1></div>
       <p id="pack-empty" class="empty-big" hidden>還沒有旅程。<br>先到「行程」新增一趟旅程，這裡就會自動產生打包清單。<br><a href="#trips/new" class="link">＋ 新增旅程</a></p>
 
@@ -318,11 +316,69 @@
       <div id="dr-list"></div>
     </section>
 
-    <!-- 回程購物（之後做） -->
+    <!-- 我的行李箱 -->
+    <section id="view-bags" class="view" hidden>
+      <div class="home-switch"><a href="#pack">打包清單</a><a href="#bags" class="on">我的行李箱</a></div>
+      <div class="page-head"><h1 data-en="SUITCASES">我的行李箱</h1></div>
+      <p class="muted small">箱子裡有東西＝跟著旅程出門；空的＝放在它的家。打包清單會從這裡挑行李箱，空箱重量自動算進去。</p>
+      <button type="button" id="bg-add" class="btn ghost">＋ 新增行李箱</button>
+      <div id="bg-list"></div>
+    </section>
+
+    <!-- 回程購物・送禮 -->
     <section id="view-shop" class="view" hidden>
-      <div class="page-head"><h1 data-en="SHOPPING">回程購物</h1></div>
-      <p class="soon-text">記錄旅途中買的東西、重量和要放進哪個行李，回程前就知道還能買多少。<br>這個功能即將推出。</p>
-      <a class="btn ghost" href="#home">回首頁</a>
+      <div class="home-switch"><button type="button" data-shop-tab="buy" class="on">購物</button><button type="button" data-shop-tab="gift">送禮</button></div>
+      <div class="page-head"><h1 id="shop-h1" data-en="SHOPPING">回程購物</h1></div>
+      <p id="shop-empty" class="empty-big" hidden>還沒有旅程。<br>先到「行程」新增一趟旅程，就能記錄購物和禮物。<br><a href="#trips/new" class="link">＋ 新增旅程</a></p>
+      <div id="shop-main" hidden>
+        <label class="pk-trip">這趟旅程
+          <select id="shop-trip"></select>
+        </label>
+
+        <div id="shop-buy">
+          <div class="card shop-card">
+            <div class="eyebrow">REMAINING</div>
+            <div class="muted small">還可以買</div>
+            <div class="shop-remain"><span id="shop-remain">—</span><small> kg</small></div>
+            <p id="shop-remain-note" class="muted small"></p>
+            <div class="field-title">計畫購物和衝動購物的比例 <span id="shop-ratio-text" class="muted small"></span></div>
+            <input id="shop-ratio" class="shop-ratio" type="range" min="0" max="100" step="5" value="70" aria-label="計畫購物佔比">
+            <div id="shop-quota"></div>
+          </div>
+
+          <div class="card shop-try-card">
+            <div class="field-title">買之前先試算</div>
+            <span class="input-unit"><input id="shop-try" type="number" inputmode="decimal" min="0" step="any" placeholder="這件大約多重"><span class="unit-text">kg</span></span>
+            <p id="shop-try-out" class="shop-try-out"></p>
+          </div>
+
+          <button type="button" id="shop-record" class="btn primary shop-record">＋ 記一筆購物</button>
+
+          <section class="home-sec">
+            <div class="sec-head"><span class="eyebrow">PLAN</span><span class="sec-title">計畫要買</span></div>
+            <form id="shop-plan-form" class="dr-add-row shop-plan-form" autocomplete="off">
+              <input id="shop-plan-name" maxlength="40" placeholder="例如：泰國香米、乳液">
+              <span class="input-unit shop-plan-w"><input id="shop-plan-w" type="number" inputmode="decimal" min="0" step="any" placeholder="重量"><span class="unit-text">kg</span></span>
+              <button type="submit" class="btn primary dr-add-btn">加入</button>
+            </form>
+            <div id="shop-plans"></div>
+          </section>
+
+          <section class="home-sec">
+            <div class="sec-head"><span class="eyebrow">RECORDS</span><span class="sec-title">購物紀錄</span></div>
+            <div id="shop-records"></div>
+          </section>
+        </div>
+
+        <div id="shop-gift" hidden>
+          <div id="gift-here" class="card arrival-banner gift-banner gift-here" hidden></div>
+          <div class="gift-top">
+            <div class="seg gift-view"><button type="button" data-gift-view="list" class="on">這趟的禮物</button><button type="button" data-gift-view="person">依送禮對象</button></div>
+            <button type="button" id="gift-add" class="btn primary">＋ 新增禮物</button>
+          </div>
+          <div id="gift-list"></div>
+        </div>
+      </div>
     </section>
 
     <!-- 我的衣櫃 -->
@@ -418,7 +474,7 @@
     <button type="button" id="plus-btn" class="plus-btn" aria-label="新增" aria-haspopup="dialog">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
     </button>
-    <a href="#pack" data-views="pack add">
+    <a href="#pack" data-views="pack add bags">
       <svg class="ico" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="7" width="14" height="13.5" rx="1"/><path d="M9 7V4.5h6V7"/><path d="M9 11.5h6"/><path d="M8.5 20.5v1"/><path d="M15.5 20.5v1"/></svg><span>打包</span>
     </a>
     <a href="#closet" data-views="closet drawer">
@@ -433,7 +489,8 @@
       <a class="plus-item" href="#add"><span>放進行李</span><span class="muted small">把東西放進這趟的行李箱</span></a>
       <a class="plus-item" href="#closet/new"><span>新增衣服</span><span class="muted small">拍照、選類別，放進衣櫃</span></a>
       <a class="plus-item" href="#drawer" data-focus="dr-name"><span>新增抽屜物品</span><span class="muted small">衣服以外的東西</span></a>
-      <a class="plus-item" href="#shop"><span>記一筆購物</span><span class="muted small">即將推出</span></a>
+      <a class="plus-item" href="#shop" data-plus-buy="1"><span>記一筆購物</span><span class="muted small">旅途中買的東西、重量、放進哪個行李</span></a>
+      <a class="plus-item" href="#shop/gift"><span>新增禮物</span><span class="muted small">送給誰、在哪個城市送</span></a>
       <button type="button" id="plus-close" class="btn ghost">取消</button>
     </div>
   </div>
@@ -554,6 +611,11 @@
         <button type="button" class="link small" id="org-all-go">全部帶走</button></span></div>
       <div id="org-packed"></div>
 
+      <div id="org-swap-wrap" hidden>
+        <div class="field-title">換行李箱 <span class="muted small">東西搬到這個家的另一個箱子，原本的箱子留在這裡</span></div>
+        <div id="org-swap"></div>
+      </div>
+
       <div id="org-home-wrap">
         <div class="field-title org-home-title" id="org-home-title"></div>
         <label class="org-bag-row">放進
@@ -588,6 +650,97 @@
     </div>
   </div>
 
+  <!-- 行李箱設定 -->
+  <div id="bge-sheet" class="sheet" hidden>
+    <div class="sheet-panel org-panel form" role="dialog" aria-modal="true" aria-labelledby="bge-title">
+      <div id="bge-title" class="sheet-title">行李箱</div>
+      <label>名稱<input id="bge-name" maxlength="20" placeholder="例如：灰色大箱、RIMOWA 登機箱"></label>
+      <div class="field-title">類型</div>
+      <div id="bge-kind" class="seg"></div>
+      <div class="field-title">尺寸</div>
+      <div id="bge-size" class="chips"></div>
+      <div class="field-title">款式</div>
+      <div id="bge-style" class="chips"></div>
+      <div class="field-title">材質</div>
+      <div id="bge-material" class="chips"></div>
+      <label>空箱重量<span class="input-unit"><input id="bge-tare" type="number" inputmode="decimal" min="0" step="any" placeholder="例如 4.2"><span class="unit-text">kg</span></span></label>
+      <div class="field-title">放在哪個家</div>
+      <div id="bge-home" class="chips"></div>
+      <p id="bge-loc" class="muted small"></p>
+      <div class="field-title">照片</div>
+      <img id="bge-photo-img" class="bge-photo" alt="" hidden>
+      <div class="cloud-btns">
+        <label class="btn ghost file-btn"><span id="bge-photo-label">加入照片（選填）</span><input id="bge-photo" type="file" accept="image/*"></label>
+        <button type="button" id="bge-photo-remove" class="btn ghost" hidden>移除照片</button>
+      </div>
+      <div class="cloud-btns dr-foot">
+        <button type="button" id="bge-cancel" class="btn ghost">取消</button>
+        <button type="button" id="bge-save" class="btn primary">儲存</button>
+      </div>
+      <button type="button" id="bge-delete" class="btn danger">刪除這個行李箱</button>
+    </div>
+  </div>
+
+  <!-- 記一筆購物 -->
+  <div id="buy-sheet" class="sheet" hidden>
+    <div class="sheet-panel org-panel form" role="dialog" aria-modal="true" aria-labelledby="buy-title">
+      <div id="buy-title" class="sheet-title">記一筆購物</div>
+      <label>名稱<input id="buy-name" maxlength="40" placeholder="買了什麼"></label>
+      <div class="dr-add-grid">
+        <label>重量（每個）<span class="input-unit"><input id="buy-weight" type="number" inputmode="decimal" min="0" step="any" placeholder="0.5"><span class="unit-text">kg</span></span></label>
+        <label>數量<input id="buy-qty" type="number" inputmode="numeric" min="1" step="1" value="1"></label>
+        <label>價格 <span class="muted">（選填）</span><input id="buy-price" maxlength="20" placeholder="例如 ฿350"></label>
+        <label>品類<select id="buy-cat"></select></label>
+      </div>
+      <p id="buy-try" class="shop-try-out"></p>
+      <div class="field-title">放進哪個行李</div>
+      <div id="buy-bag" class="chips"></div>
+      <div class="field-title">在哪個城市買</div>
+      <div id="buy-city" class="chips"></div>
+      <div class="field-title">之後放到哪個家 <span class="muted small">抵達那個家整理行李時會提醒</span></div>
+      <div id="buy-home" class="chips"></div>
+      <div class="cloud-btns dr-foot">
+        <button type="button" id="buy-cancel" class="btn ghost">取消</button>
+        <button type="button" id="buy-save" class="btn primary">儲存</button>
+      </div>
+      <button type="button" id="buy-delete" class="btn danger" hidden>刪除這筆紀錄</button>
+    </div>
+  </div>
+
+  <!-- 禮物 -->
+  <div id="gift-sheet" class="sheet" hidden>
+    <div class="sheet-panel org-panel form" role="dialog" aria-modal="true" aria-labelledby="gift-title">
+      <div id="gift-title" class="sheet-title">新增禮物</div>
+      <div class="field-title">從哪裡來</div>
+      <div id="gift-source" class="seg"></div>
+      <div id="gift-drawer-wrap" hidden>
+        <div class="field-title">從抽屜挑（「禮物」品類）</div>
+        <div id="gift-drawer" class="chips"></div>
+      </div>
+      <label>禮物名稱<input id="gift-name" maxlength="40" placeholder="例如：鳳梨酥、茶葉"></label>
+      <div class="dr-add-grid">
+        <label>重量（每份）<span class="input-unit"><input id="gift-weight" type="number" inputmode="decimal" min="0" step="any" placeholder="0.3"><span class="unit-text">kg</span></span></label>
+        <label>數量<input id="gift-qty" type="number" inputmode="numeric" min="1" step="1" value="1"></label>
+      </div>
+      <label>送給誰<input id="gift-to" maxlength="20" list="gift-to-list" placeholder="例如：媽媽、王經理"></label>
+      <datalist id="gift-to-list"></datalist>
+      <div id="gift-to-chips" class="chips"></div>
+      <div class="field-title">在哪個城市送</div>
+      <div id="gift-city" class="chips"></div>
+      <div class="field-title">狀態</div>
+      <div id="gift-status" class="seg gift-status-seg"></div>
+      <div id="gift-bag-wrap" hidden>
+        <div class="field-title">放在哪個行李</div>
+        <div id="gift-bag" class="chips"></div>
+      </div>
+      <div class="cloud-btns dr-foot">
+        <button type="button" id="gift-cancel" class="btn ghost">取消</button>
+        <button type="button" id="gift-save" class="btn primary">儲存</button>
+      </div>
+      <button type="button" id="gift-delete" class="btn danger" hidden>刪除這個禮物</button>
+    </div>
+  </div>
+
   <!-- 選擇要放進哪個行李 -->
   <div id="bag-sheet" class="sheet" hidden>
     <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="bag-sheet-title">
@@ -597,18 +750,20 @@
     </div>
   </div>
 
-  <script src="weights.js?v=20261110b"></script>
-  <script src="photos.js?v=20261110b"></script>
-  <script src="clothing.js?v=20261110b"></script>
-  <script src="app.js?v=20261110b"></script>
-  <script src="closet.js?v=20261110b"></script>
-  <script src="trips.js?v=20261110b"></script>
-  <script src="organize.js?v=20261110b"></script>
-  <script src="packing.js?v=20261110b"></script>
-  <script src="drawer.js?v=20261110b"></script>
-  <script src="nav.js?v=20261110b"></script>
-  <script src="backup.js?v=20261110b"></script>
+  <script src="weights.js?v=20261111a"></script>
+  <script src="photos.js?v=20261111a"></script>
+  <script src="clothing.js?v=20261111a"></script>
+  <script src="app.js?v=20261111a"></script>
+  <script src="closet.js?v=20261111a"></script>
+  <script src="trips.js?v=20261111a"></script>
+  <script src="organize.js?v=20261111a"></script>
+  <script src="packing.js?v=20261111a"></script>
+  <script src="drawer.js?v=20261111a"></script>
+  <script src="bags.js?v=20261111a"></script>
+  <script src="shop.js?v=20261111a"></script>
+  <script src="nav.js?v=20261111a"></script>
+  <script src="backup.js?v=20261111a"></script>
   <script src="vendor/supabase.js"></script>
-  <script src="cloud.js?v=20261110b"></script>
+  <script src="cloud.js?v=20261111a"></script>
 </body>
 </html>

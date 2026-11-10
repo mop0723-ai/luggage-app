@@ -3,10 +3,10 @@
  * 有網路時一律抓最新版（同時更新快取）；沒網路時改用快取。
  * 只處理自己網站的檔案，Supabase 等外部連線不經過這裡。
  */
-var CACHE = 'luggage-app-v3';
+var CACHE = 'luggage-app-v4';
 var ASSETS = [
   './', 'index.html', 'style.css', 'weights.js', 'photos.js', 'clothing.js', 'app.js',
-  'closet.js', 'trips.js', 'organize.js', 'packing.js', 'drawer.js', 'nav.js', 'backup.js', 'cloud.js', 'vendor/supabase.js'
+  'closet.js', 'trips.js', 'organize.js', 'packing.js', 'drawer.js', 'bags.js', 'shop.js', 'nav.js', 'backup.js', 'cloud.js', 'vendor/supabase.js'
 ];
 
 self.addEventListener('install', function (e) {

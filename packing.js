@@ -109,17 +109,28 @@
   function lists() { return st().packLists; }
   function listFor(tripId) { return lists().find(function (l) { return l.id === tripId; }); }
 
-  function firstBag(kind) { return st().bags.find(function (b) { return b.kind === kind; }); }
+  // 這類行李箱：出發地那個家的排前面
+  function bagsOfKind(kind, originHome) {
+    return st().bags.filter(function (b) { return b.kind === kind; }).sort(function (a, b) {
+      return (b.home === originHome ? 1 : 0) - (a.home === originHome ? 1 : 0);
+    });
+  }
+  function originOf(list) {
+    var t = tripById(list.id);
+    return t && window.Trips ? window.Trips.homeFor(t.origin) : '';
+  }
+  function firstBag(kind, originHome) { return bagsOfKind(kind, originHome)[0]; }
 
   function ensureList(t) {
     var list = listFor(t.id);
     if (list) return list;
     var zones = {};
+    var origin = window.Trips ? window.Trips.homeFor(t.origin) : '';
     ZONES.forEach(function (z) {
-      var b = firstBag(z[0]);
+      var b = firstBag(z[0], origin);
       zones[z[0]] = { on: !!b, bagId: b ? b.id : null };
     });
-    if (!ZONES.some(function (z) { return zones[z[0]].on; })) setZone({ zones: zones }, 'carry', true);
+    if (!ZONES.some(function (z) { return zones[z[0]].on; })) setZone({ id: t.id, zones: zones }, 'carry', true);
     list = { id: t.id, zones: zones, seasons: tripSeasons(t), activities: guessActs(t), entries: [], createdAt: Date.now(), updatedAt: Date.now() };
     lists().push(list);
     generate(list, t);
@@ -130,10 +141,11 @@
   function setZone(list, z, on) {
     var cfg = list.zones[z];
     if (on && !(cfg.bagId && App.bagById(cfg.bagId))) {
-      var b = firstBag(z);
+      var origin = originOf(list);
+      var b = firstBag(z, origin);
       if (!b) {
         var def = ZONES.find(function (x) { return x[0] === z; });
-        b = { id: App.uid(), name: def[2], kind: z, limit: def[3], tare: 0 };
+        b = App.normalizeBag({ id: App.uid(), name: def[2], kind: z, limit: def[3], tare: 0, home: origin || '' });
         st().bags.push(b);
       }
       cfg.bagId = b.id;
@@ -258,6 +270,11 @@
     var changed = false;
     var items = st().items;
     var byItem = {};
+    // 從行李帶進來的項目（例如禮物、旅途中買的），行李裡沒有了就一起拿掉，不再算成「還沒收」
+    list.entries = list.entries.filter(function (e) {
+      if (e.checked && e.source === 'bag' && !items.some(function (it) { return it.id === e.itemId; })) { changed = true; return false; }
+      return true;
+    });
     list.entries.forEach(function (e) {
       if (e.checked && !items.some(function (it) { return it.id === e.itemId; })) {
         e.checked = false; e.itemId = null; changed = true;
@@ -277,6 +294,8 @@
         e = mkEntry({ key: it.catalogId ? 'c:' + it.catalogId + ':' + it.id : 'i:' + it.id, catalogId: it.catalogId || null,
           name: it.name, weight: it.weight, qty: it.qty, unit: it.unit, category: it.category,
           carryOnly: has(it.name, CARRY_ONLY), source: 'bag' });
+        if (it.giftId) e.giftId = it.giftId;
+        if (it.purchaseId) e.purchaseId = it.purchaseId;
         list.entries.push(e);
       }
       e.status = 'take'; e.zone = z; e.checked = true; e.itemId = it.id;
@@ -294,6 +313,8 @@
       var bagId = list.zones[e.zone].bagId;
       if (m) App.markPacked(m, bagId);
       var it = { id: App.uid(), name: e.name, weight: e.weight, qty: e.qty, unit: e.unit, category: e.category, bagId: bagId, catalogId: e.catalogId || undefined };
+      if (e.giftId) it.giftId = e.giftId;
+      if (e.purchaseId) it.purchaseId = e.purchaseId;
       s.items.push(it);
       if (m) m.uses = (m.uses || 0) + 1;
       e.checked = true; e.itemId = it.id;
@@ -417,16 +438,22 @@
   function render() {
     var list = curList, t = curTrip;
     // 設定：行李
+    // 從「我的行李箱」挑：出發地那個家的箱子排前面
+    var origin = originOf(list);
     $('#pack-bags').innerHTML = ZONES.map(function (z) {
       var cfg = list.zones[z[0]];
       var bag = cfg.bagId && App.bagById(cfg.bagId);
       var on = cfg.on && !!bag;
+      var choices = bagsOfKind(z[0], origin);
       return '<div class="pk-bag' + (on ? ' on' : '') + '">' +
         '<button type="button" class="chip' + (on ? ' on' : '') + '" data-zone-toggle="' + z[0] + '">' + (on ? '✓ ' : '') + z[1] + '</button>' +
-        (on ? '<label>名稱<input data-bag-field="name" data-zone-of="' + z[0] + '" maxlength="20" value="' + esc(bag.name) + '"></label>' +
-          '<label>空箱 kg<input data-bag-field="tare" data-zone-of="' + z[0] + '" type="number" inputmode="decimal" step="any" min="0" value="' + esc(bag.tare) + '"></label>'
+        (on ? '<label class="pk-bag-pick">用哪個箱子<select data-zone-bag="' + z[0] + '">' + choices.map(function (b) {
+            return '<option value="' + esc(b.id) + '"' + (b.id === bag.id ? ' selected' : '') + '>' + esc(b.name) +
+              (b.home ? '（' + esc(b.home) + (b.home === origin ? '・出發地' : '') + '）' : '') + '</option>';
+          }).join('') + '</select></label>' +
+          '<span class="muted small pk-bag-tare">空箱 ' + fmt(Number(bag.tare) || 0) + ' kg</span>'
           : '<span class="muted small">這趟不用</span>') + '</div>';
-    }).join('');
+    }).join('') + '<a class="link small" href="#bags">管理我的行李箱 ›</a>';
     $('#pack-seasons').innerHTML = SEASONS.map(function (s) {
       return '<button type="button" class="chip' + (list.seasons.indexOf(s) >= 0 ? ' on' : '') + '" data-season="' + s + '">' + s + '</button>';
     }).join('');
@@ -542,14 +569,17 @@
 
   function toggle(arr, v) { var i = arr.indexOf(v); if (i >= 0) arr.splice(i, 1); else arr.push(v); }
 
-  // 行李名稱、空箱重量
+  // 換成另一個行李箱：已經收好的東西一起搬過去
   $('#pack-bags').addEventListener('change', function (ev) {
-    var f = ev.target.getAttribute('data-bag-field');
-    if (!f) return;
-    var bag = App.bagById(curList.zones[ev.target.getAttribute('data-zone-of')].bagId);
-    if (!bag) return;
-    if (f === 'name') bag.name = ev.target.value.trim() || bag.name;
-    else { var v = parseFloat(ev.target.value); bag.tare = isFinite(v) && v >= 0 ? v : 0; }
+    var z = ev.target.getAttribute('data-zone-bag');
+    if (!z) return;
+    var oldId = curList.zones[z].bagId, newId = ev.target.value;
+    if (oldId === newId) return;
+    App.moveBagContents(oldId, newId);
+    curList.zones[z].bagId = newId;
+    touch(curList);
+    var b = App.bagById(newId);
+    App.toast('這趟的' + zoneName(z) + '改用：' + (b ? b.name : ''));
     commit();
   });
 
