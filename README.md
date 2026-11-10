@@ -27,6 +27,10 @@ https://mop0723-ai.github.io/luggage-app/
 - **我的衣櫃**：照片格子排列所有有標籤的衣服，依上衣、下身、洋裝、外套、鞋子、配件分頁，
   再依顏色、季節、風格篩選；可一鍵放進行李（`closet.js`）。
 
+- **行程設定**：建立旅程（名稱、出發地），每趟可加多段航班（出發／抵達城市、日期、航班號碼、航空公司），
+  每段有自己的托運、手提、背包額度；可編輯、刪除、調整順序。抵達有家的城市會標示「有家」（`trips.js`）。
+  首頁的剩餘公斤數依「今天以後最近的一段航班」的額度計算，沒有行程時用「行李額度」的設定。
+
 ## 資料結構
 
 說明寫在 `app.js` 開頭。重點：
@@ -35,6 +39,9 @@ https://mop0723-ai.github.io/luggage-app/
 - `clothing.part` 是穿搭部位（top、bottom、full、outer、shoes、accessory），給之後的模擬穿搭用；
   `outfits` 是預留的穿搭清單。
 - 上一版衣櫃資料會自動轉進 `memory`，原始資料保留在 `legacyWardrobe`。
+- `trips`（旅程）與航班段 `legs`，預留匯入訂位紀錄（`source`、`importRef`、`bookingCode`）、
+  AI 辨識行程單（`ai`）與多人共用（`ownerId`、`members`、`shareCode`）的欄位。
+- 行李的 `kind`（托運、手提、背包）對應航班的三種額度。
 
 ## 參考重量表
 

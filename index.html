@@ -20,6 +20,8 @@
         <div id="remain-status" class="remain-status">充裕</div>
       </div>
 
+      <div id="next-trip" class="card next-trip"></div>
+
       <div class="total-row">
         <div>
           <div class="muted">目前行李總重量</div>
@@ -36,6 +38,7 @@
       <div id="allowance" class="card settings">
         <div class="card-head"><span>行李額度（依航空公司調整）</span></div>
         <p class="muted small">每次出發前，依這次航空公司給的額度修改「上限」。「空箱」是行李箱本身的重量，會算進總重量。改完會自動儲存。</p>
+        <p id="allowance-note" class="allowance-note" hidden>✈️ 目前有下一段航班，首頁上限依那段的額度計算；這裡的「上限」在沒有排行程、或航班沒填某項額度時使用。「類型」決定每個行李對應航班的哪一項額度。</p>
         <div id="bag-settings"></div>
         <button type="button" id="add-bag" class="btn ghost">＋ 新增一個行李</button>
       </div>
@@ -130,6 +133,41 @@
         <button type="submit" class="btn primary">加入行李</button>
       </form>
     </section>
+    <!-- 行程設定 -->
+    <section id="view-trips" class="view" hidden>
+      <div id="trip-list-view">
+        <div class="page-head">
+          <h1>行程設定</h1>
+          <a href="#trips/new" class="btn primary small-btn">＋ 新增旅程</a>
+        </div>
+        <div id="trip-list"></div>
+        <p id="trip-empty" class="empty-big" hidden>還沒有旅程。<br>點右上角「＋ 新增旅程」，加上每段航班和行李額度，<br>首頁就會依下一段航班計算剩餘公斤數。</p>
+      </div>
+
+      <form id="trip-form" class="form" autocomplete="off" hidden>
+        <div class="page-head">
+          <a href="#trips" class="link back">‹ 行程</a>
+          <h1 id="tf-title">新增旅程</h1>
+          <span class="back"></span>
+        </div>
+        <div class="card">
+          <label>旅程名稱
+            <input id="tf-name" maxlength="40" placeholder="例如：2027 春節回台灣">
+          </label>
+          <label>出發地
+            <input id="tf-origin" maxlength="30" placeholder="例如：曼谷">
+          </label>
+          <div id="tf-origin-home"></div>
+        </div>
+
+        <div id="tf-legs"></div>
+        <button type="button" id="tf-add-leg" class="btn ghost">＋ 新增一段航班</button>
+
+        <button type="submit" class="btn primary save-trip">儲存旅程</button>
+        <button type="button" id="tf-delete" class="btn danger" hidden>刪除這趟旅程</button>
+      </form>
+    </section>
+
     <!-- 我的衣櫃 -->
     <section id="view-closet" class="view" hidden>
       <div id="closet-list">
@@ -210,6 +248,9 @@
     <a href="#add" data-view="add">
       <svg class="ico" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v9"/><path d="M8.5 7.5 12 11l3.5-3.5"/><path d="M8 9H5.5L3 13v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6l-2.5-4H16"/><path d="M3 13h5l1 2h6l1-2h5"/></svg><span>放進行李</span>
     </a>
+    <a href="#trips" data-view="trips">
+      <svg class="ico" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg><span>行程</span>
+    </a>
     <a href="#closet" data-view="closet">
       <svg class="ico" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7.5V7a2 2 0 1 0-2-2"/><path d="M12 7.5 3 15a1.6 1.6 0 0 0 1 3h16a1.6 1.6 0 0 0 1-3z"/></svg><span>我的衣櫃</span>
     </a>
@@ -231,5 +272,6 @@
   <script src="clothing.js"></script>
   <script src="app.js"></script>
   <script src="closet.js"></script>
+  <script src="trips.js"></script>
 </body>
 </html>

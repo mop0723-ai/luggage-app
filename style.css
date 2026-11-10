@@ -143,7 +143,9 @@ h1 { font-size: 1.4rem; margin: 4px 0 16px; }
 .edit-hint { color: var(--primary); font-size: 0.8rem; font-weight: 700; }
 .settings.flash { animation: flash 1.2s; }
 @keyframes flash { 0%, 40% { box-shadow: 0 0 0 3px var(--primary); } 100% { box-shadow: 0 0 0 0 transparent; } }
-.bag-edit { display: grid; grid-template-columns: 1fr 74px 74px 36px; gap: 6px; align-items: end; margin-bottom: 8px; }
+.bag-edit { display: grid; grid-template-columns: 1fr 1fr 1fr 36px; gap: 6px; align-items: end; margin-bottom: 14px; }
+.bag-edit .be-name { grid-column: span 2; }
+.bag-edit .be-kind { grid-column: span 2; }
 .bag-edit label { font-size: 0.75rem; color: var(--muted); }
 
 /* 表單 */
@@ -598,3 +600,50 @@ input:focus, select:focus { outline: 2px solid var(--primary); outline-offset: -
 .field-note { margin: -2px 0 14px; }
 .straps-box { margin-top: 14px; }
 a.pick-tile { text-decoration: none; }
+
+/* ---------- 行程設定 ---------- */
+.next-trip { border-left: 4px solid var(--primary); margin-top: 14px; }
+.next-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.next-title { font-weight: 700; display: block; margin-bottom: 4px; }
+.next-head .next-title { margin-bottom: 0; }
+.next-leg { margin-top: 4px; font-size: 1.05rem; }
+.next-allow { margin-top: 4px; font-size: 0.95rem; color: var(--text); }
+.next-note { margin: 6px 0 0; }
+.next-trip .small-btn { margin-top: 4px; }
+.home-badge {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.allowance-note { margin: 0 0 12px; padding: 8px 10px; border-radius: 10px; background: #eff6ff; color: #1e40af; font-size: 0.85rem; }
+.bag-name .tag { margin-left: 6px; vertical-align: middle; }
+
+.trip-card { display: block; text-decoration: none; color: var(--text); }
+.trip-card:active { opacity: .8; }
+.trip-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.trip-name { font-weight: 700; font-size: 1.1rem; }
+.next-badge { background: var(--primary); color: #fff; font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; flex: none; }
+.trip-route { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 8px; }
+.trip-route .city { background: var(--bg); border-radius: 8px; padding: 2px 8px; font-size: 0.9rem; }
+.trip-route .city.is-home { background: #ecfdf5; color: #047857; font-weight: 700; }
+.trip-route .arrow { color: var(--muted); }
+
+.leg-card { border-top: 4px solid #c7d2fe; }
+.leg-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.leg-no { font-weight: 700; color: var(--primary); }
+.leg-tools { display: flex; gap: 2px; }
+.leg-tools .icon-btn { font-size: 1.05rem; }
+.leg-tools .icon-btn:disabled { opacity: .3; }
+.leg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+.leg-grid .span2 { grid-column: span 2; }
+.leg-grid label, .allow-grid label { margin-bottom: 10px; }
+.leg-home { margin: -4px 0 6px; }
+.leg-home:empty { display: none; }
+.allow-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 8px; }
+.allow-grid label { font-size: 0.8rem; }
+.save-trip { margin-top: 14px; }

@@ -27,7 +27,9 @@
   /*
    * 存在 localStorage（luggage-app-v1）的資料結構，第 2 版：
    *
-   * bags   行李：{ id, name, limit(上限 kg), tare(空箱 kg) }
+   * bags   行李：{ id, name, kind, limit(上限 kg), tare(空箱 kg) }
+   *          kind：checked 托運、carry 手提、personal 背包／個人物品（對應航班的三種額度）
+   *          limit：沒有排行程時使用的上限；有下一段航班時改用那段的額度
    * items  行李裡的東西：{ id, name, weight(每單位 kg), qty, unit, category, bagId, catalogId }
    *          catalogId：對應到 memory 裡的哪一件（用來顯示照片）
    * memory 常帶物品＝我擁有的東西，「我的衣櫃」也是從這裡來：
@@ -41,6 +43,15 @@
    * sync    預留：雲端帳號 { userId, lastSyncedAt }
    * homes   「家」的清單，衣服標籤的 clothing.home 會是其中之一
    * legacyWardrobe 上一版衣櫃的原始資料，留著備份
+   * trips  旅程：{ id, name, origin, legs[], createdAt, updatedAt,
+   *            source,     來源：manual 手動、import 匯入訂位紀錄、ai 行程單截圖辨識（預留）
+   *            importRef,  預留：匯入資訊 { platform, bookingCode, importedAt, raw }
+   *            ownerId, members[], shareCode,  預留：多人共用同一份行程
+   *            cloudId, syncedAt }             預留：雲端
+   *          legs 航班段：{ id, from, to, date(YYYY-MM-DD), flightNo, airline,
+   *            allowance: { checked, carry, personal }（公斤；空白＝沿用行李自己的上限，0＝這段沒有這項額度）,
+   *            bookingCode,  預留：訂位代號
+   *            ai }          預留：AI 辨識結果 { confidence, fromImage, at }
    *
    * 照片本身存在 IndexedDB（見 photos.js），不放在 localStorage。
    */
@@ -51,18 +62,54 @@
     return {
       schemaVersion: SCHEMA_VERSION,
       bags: [
-        { id: uid(), name: '托運行李', limit: 23, tare: 4 },
-        { id: uid(), name: '登機箱', limit: 7, tare: 2.5 }
+        { id: uid(), name: '托運行李', kind: 'checked', limit: 23, tare: 4 },
+        { id: uid(), name: '登機箱', kind: 'carry', limit: 7, tare: 2.5 }
       ],
       items: [],
       memory: [],
       outfits: [],
       homes: DEFAULT_HOMES.slice(),
+      trips: [],
       sync: { userId: null, lastSyncedAt: null }
     };
   }
 
   // 補齊常帶物品的欄位
+  // 依行李名稱猜類型（托運、手提、背包）
+  function guessBagKind(name) {
+    name = String(name || '');
+    if (/背包|個人|后背|後背|包包/.test(name)) return 'personal';
+    if (/登機|手提|隨身|carry/i.test(name)) return 'carry';
+    return 'checked';
+  }
+  var BAG_KINDS = [['checked', '托運'], ['carry', '手提'], ['personal', '背包']];
+
+  function normalizeTrip(t) {
+    if (!t.id) t.id = uid();
+    if (!Array.isArray(t.legs)) t.legs = [];
+    t.legs.forEach(normalizeLeg);
+    ['name', 'origin'].forEach(function (k) { if (t[k] == null) t[k] = ''; });
+    if (!t.createdAt) t.createdAt = Date.now();
+    if (!t.updatedAt) t.updatedAt = t.createdAt;
+    if (!t.source) t.source = 'manual';
+    if (t.importRef === undefined) t.importRef = null;
+    if (t.ownerId === undefined) t.ownerId = null;
+    if (!Array.isArray(t.members)) t.members = [];
+    if (t.shareCode === undefined) t.shareCode = null;
+    if (t.cloudId === undefined) t.cloudId = null;
+    if (t.syncedAt === undefined) t.syncedAt = null;
+    return t;
+  }
+
+  function normalizeLeg(l) {
+    if (!l.id) l.id = uid();
+    ['from', 'to', 'date', 'flightNo', 'airline'].forEach(function (k) { if (l[k] == null) l[k] = ''; });
+    if (!l.allowance) l.allowance = { checked: '', carry: '', personal: '' };
+    if (l.bookingCode === undefined) l.bookingCode = null;
+    if (l.ai === undefined) l.ai = null;
+    return l;
+  }
+
   function normalizeEntry(m) {
     if (!m.id) m.id = uid();
     if (m.photoId === undefined) m.photoId = null;
@@ -121,6 +168,9 @@
 
     if (!Array.isArray(s.outfits)) s.outfits = [];
     if (!Array.isArray(s.homes)) s.homes = DEFAULT_HOMES.slice();
+    if (!Array.isArray(s.trips)) s.trips = [];
+    s.trips.forEach(normalizeTrip);
+    s.bags.forEach(function (b) { if (!b.kind) b.kind = guessBagKind(b.name); });
     if (!s.sync) s.sync = { userId: null, lastSyncedAt: null };
     s.schemaVersion = SCHEMA_VERSION;
     return s;
@@ -180,10 +230,76 @@
     toastTimer = setTimeout(function () { el.classList.remove('show'); }, 1800);
   }
 
+  // ---------- 下一段航班 ----------
+  function todayStr() {
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  // 今天（含）以後、日期最近的一段航班
+  function nextLeg() {
+    var today = todayStr(), best = null;
+    state.trips.forEach(function (t) {
+      t.legs.forEach(function (l, i) {
+        if (!l.date || l.date < today) return;
+        if (!best || l.date < best.leg.date) best = { trip: t, leg: l, index: i };
+      });
+    });
+    return best;
+  }
+
+  // 這段航班某種額度的公斤數；沒填回傳 null
+  function allowanceOf(leg, kind) {
+    var v = leg.allowance && leg.allowance[kind];
+    return v === '' || v == null ? null : Number(v) || 0;
+  }
+
+  // 每個行李這次的上限：有下一段航班就用那段的額度（同類型有好幾個行李就平分）；
+  // 那段沒填這項額度、或沒有排行程時，用行李自己設定的上限
+  function bagLimits(next) {
+    var out = {};
+    state.bags.forEach(function (b) {
+      var a = next ? allowanceOf(next.leg, b.kind) : null;
+      if (a == null) { out[b.id] = Number(b.limit) || 0; return; }
+      var same = state.bags.filter(function (x) { return x.kind === b.kind; }).length || 1;
+      out[b.id] = a / same;
+    });
+    return out;
+  }
+
+  function renderNextTrip(next) {
+    var box = $('#next-trip');
+    if (!next) {
+      box.innerHTML = '<div class="next-title">下一趟旅程</div>' +
+        '<p class="muted small">還沒有接下來的航班。到「行程」新增旅程後，剩餘公斤數會依下一段航班的額度計算；目前用下方「行李額度」的設定。</p>' +
+        '<a class="btn ghost small-btn" href="#trips/new">＋ 新增旅程</a>';
+      return;
+    }
+    var l = next.leg, T = window.Trips;
+    var flight = [l.airline, l.flightNo].filter(Boolean).join(' ');
+    box.innerHTML = '<div class="next-head"><span class="next-title">下一趟旅程：' + esc(next.trip.name) + '</span>' +
+      '<a class="link" href="#trips/' + encodeURIComponent(next.trip.id) + '">查看</a></div>' +
+      '<div class="next-leg">' + T.fmtDate(l.date) + '　<b>' + T.legRoute(l) + '</b>' +
+      (flight ? '<span class="muted">　' + esc(flight) + '</span>' : '') + '</div>' +
+      '<div class="next-allow">' + esc(T.allowanceText(l.allowance)) + '</div>' +
+      T.homeBadge(l.to) +
+      '<p class="muted small next-note">剩餘公斤數依這段航班的額度計算</p>';
+  }
+
   // ---------- 首頁 ----------
   function renderHome() {
+    var next = nextLeg();
+    var limits = bagLimits(next);
     var total = 0, limit = 0;
-    state.bags.forEach(function (b) { total += bagLoad(b); limit += Number(b.limit) || 0; });
+    state.bags.forEach(function (b) { total += bagLoad(b); });
+    // 總上限：每種額度各算一次（有填就用航班額度，沒填就加總那類行李自己的上限）
+    BAG_KINDS.forEach(function (k) {
+      var a = next ? allowanceOf(next.leg, k[0]) : null;
+      if (a != null) limit += a;
+      else state.bags.forEach(function (b) { if (b.kind === k[0]) limit += limits[b.id]; });
+    });
+    renderNextTrip(next);
+    $('#allowance-note').hidden = !next;
     var remain = limit - total;
     var lv = level(remain, limit);
 
@@ -198,7 +314,7 @@
     // 各行李
     var html = state.bags.map(function (b) {
       var w = bagLoad(b);
-      var lim = Number(b.limit) || 0;
+      var lim = limits[b.id];
       var blv = level(lim - w, lim);
       var pct = lim > 0 ? Math.min(100, (w / lim) * 100) : 100;
       var items = state.items.filter(function (it) { return it.bagId === b.id; });
@@ -212,7 +328,9 @@
               '<button class="icon-btn" data-del-item="' + it.id + '" aria-label="刪除 ' + esc(it.name) + '">✕</button></li>';
           }).join('') + '</ul>'
         : '<div class="empty">還沒有物品</div>';
-      return '<div class="card"><div class="bag-head"><span class="bag-name">' + esc(b.name) + '</span>' +
+      var kindName = (BAG_KINDS.find(function (k) { return k[0] === b.kind; }) || [, ''])[1];
+      return '<div class="card"><div class="bag-head"><span class="bag-name">' + esc(b.name) +
+        (kindName ? '<span class="tag">' + kindName + '</span>' : '') + '</span>' +
         '<span class="bag-weight">' + fmt(w) + ' / ' + fmt(lim) + ' kg</span></div>' +
         '<div class="bar ' + blv + '"><i style="width:' + pct + '%"></i></div>' +
         '<div class="muted small">含空箱 ' + fmt(Number(b.tare) || 0) + ' kg・剩 ' + fmt(lim - w) + ' kg</div>' +
@@ -227,7 +345,10 @@
   function renderBagSettings() {
     $('#bag-settings').innerHTML = state.bags.map(function (b) {
       return '<div class="bag-edit" data-bag="' + b.id + '">' +
-        '<label>名稱<input data-field="name" value="' + esc(b.name) + '" maxlength="20"></label>' +
+        '<label class="be-name">名稱<input data-field="name" value="' + esc(b.name) + '" maxlength="20"></label>' +
+        '<label class="be-kind">類型<select data-field="kind">' + BAG_KINDS.map(function (k) {
+          return '<option value="' + k[0] + '"' + (b.kind === k[0] ? ' selected' : '') + '>' + k[1] + '</option>';
+        }).join('') + '</select></label>' +
         '<label>上限 kg<input data-field="limit" type="number" inputmode="decimal" step="any" min="0" value="' + b.limit + '"></label>' +
         '<label>空箱 kg<input data-field="tare" type="number" inputmode="decimal" step="any" min="0" value="' + b.tare + '"></label>' +
         '<button type="button" class="icon-btn" data-del-bag="' + b.id + '" aria-label="刪除行李">🗑</button>' +
@@ -255,6 +376,8 @@
     if (!bag || !field) return;
     if (field === 'name') {
       bag.name = e.target.value.trim() || bag.name;
+    } else if (field === 'kind') {
+      bag.kind = e.target.value;
     } else {
       var v = parseFloat(e.target.value);
       bag[field] = isFinite(v) && v >= 0 ? v : 0;
@@ -287,7 +410,7 @@
   });
 
   $('#add-bag').addEventListener('click', function () {
-    state.bags.push({ id: uid(), name: '行李 ' + (state.bags.length + 1), limit: 7, tare: 0 });
+    state.bags.push({ id: uid(), name: '行李 ' + (state.bags.length + 1), kind: 'personal', limit: 7, tare: 0 });
     save();
     renderHome();
   });
@@ -820,13 +943,14 @@
   // 網址：#home、#add、#closet（衣櫃）、#closet/new（新增衣服）、#closet/<id>（編輯衣服）
   function route() {
     var parts = location.hash.replace(/^#/, '').split('/');
-    var view = ['add', 'closet'].indexOf(parts[0]) >= 0 ? parts[0] : 'home';
-    ['home', 'add', 'closet'].forEach(function (v) { $('#view-' + v).hidden = v !== view; });
+    var view = ['add', 'closet', 'trips'].indexOf(parts[0]) >= 0 ? parts[0] : 'home';
+    ['home', 'add', 'closet', 'trips'].forEach(function (v) { $('#view-' + v).hidden = v !== view; });
     document.querySelectorAll('.tabbar a').forEach(function (a) {
       a.classList.toggle('on', a.getAttribute('data-view') === view);
     });
     if (view === 'home') renderHome();
     else if (view === 'add') renderAdd();
+    else if (view === 'trips') { if (window.Trips) window.Trips.show(decodeURIComponent(parts.slice(1).join('/'))); }
     else if (window.Closet) window.Closet.show(decodeURIComponent(parts.slice(1).join('/')));
     window.scrollTo(0, 0);
   }
@@ -848,6 +972,9 @@
     homes: homes,
     addHome: addHome,
     watches: watches,
+    nextLeg: nextLeg,
+    normalizeTrip: normalizeTrip,
+    normalizeLeg: normalizeLeg,
     isCloth: isCloth,
     packedItem: packedItem,
     packEntry: packEntry,
