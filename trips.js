@@ -708,6 +708,6 @@
 
   window.Trips = {
     show: show, homeFor: homeFor, homeBadge: homeBadge, fmtDate: fmtDate,
-    allowanceText: allowanceText, legRoute: legRoute, endHomeOf: endHomeOf
+    allowanceText: allowanceText, legRoute: legRoute, endHomeOf: endHomeOf, arrivalDate: arrivalDate
   };
 })();

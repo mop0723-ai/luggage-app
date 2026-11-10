@@ -41,6 +41,47 @@
     }).join('');
   }
 
+  // 依位置篩選：某個家（含待確認）、在行李裡、未設定
+  function homeMatch(loc, f) {
+    if (f === '在行李裡') return loc.state === 'packed';
+    if (f === '未設定') return loc.state === 'none';
+    return (loc.state === 'home' || loc.state === 'pending') && loc.home === f;
+  }
+
+  // ---------- 詳細頁：位置與移動紀錄 ----------
+  function renderLocation(m) {
+    var box = $('#cf-loc');
+    box.hidden = !m;
+    if (!m) return;
+    var loc = App.locOf(m);
+    var bag = loc.bagId && App.bagById(loc.bagId);
+    var here = loc.state === 'home' || loc.state === 'pending' ? loc.home : '';
+    $('#cf-loc-now').textContent = App.locText(loc) + (bag && loc.state !== 'home' ? '・' + bag.name : '');
+    $('#cf-loc-moves').textContent = App.movesText(m) || '還沒有移動紀錄';
+    $('#cf-loc-btns').innerHTML = App.homes().filter(function (h) { return h !== here || loc.state === 'pending'; }).map(function (h) {
+      return '<button type="button" class="chip" data-move-home="' + esc(h) + '">移到 ' + esc(h) + '</button>';
+    }).join('');
+  }
+
+  $('#cf-loc-btns').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-move-home]');
+    var m = App.entryById(editing);
+    if (!b || !m) return;
+    var h = b.getAttribute('data-move-home');
+    var loc = App.locOf(m);
+    var msg = loc.state === 'packed'
+      ? '「' + m.name + '」現在在行李裡。要從行李拿出來，改放在「' + h + '」嗎？'
+      : '要把「' + m.name + '」移到「' + h + '」嗎？';
+    if (!confirm(msg)) return;
+    if (packedItem(m)) st().items = st().items.filter(function (it) { return it.catalogId !== m.id; });
+    App.markHome(m, h, App.todayStr(), true);
+    App.save();
+    var t = picker.get(); t.home = h; picker.render();
+    renderLocation(m);
+    renderPack();
+    App.toast('已移到' + h);
+  });
+
   function renderList() {
     var all = clothes();
     $('#closet-tabs').innerHTML = [{ name: '' }].concat(C.GROUPS).map(function (g) {
@@ -64,14 +105,15 @@
     $('#closet-f-style').innerHTML = chipRow(C.STYLES, fStyle, 'data-fstyle', '全部');
     // 家：清單裡的每個家；有衣服還沒設定家的話，多一個「未設定」
     var homeOpts = App.homes().slice();
-    if (all.some(function (m) { return !m.clothing.home; })) homeOpts.push('未設定');
+    homeOpts.push('在行李裡');
+    if (all.some(function (m) { return App.locOf(m).state === 'none'; })) homeOpts.push('未設定');
     if (fHome && homeOpts.indexOf(fHome) < 0) fHome = '';
     $('#closet-f-home').innerHTML = chipRow(homeOpts, fHome, 'data-fhome', '全部');
 
     var list = all.filter(function (m) {
       var c = m.clothing;
       return (!tab || c.group === tab) &&
-        (!fHome || (fHome === '未設定' ? !c.home : c.home === fHome)) &&
+        (!fHome || homeMatch(App.locOf(m), fHome)) &&
         (!fColor || (c.colors || []).indexOf(fColor) >= 0) &&
         (!fSeason || (c.seasons || []).indexOf(fSeason) >= 0) &&
         (!fStyle || (c.styles || []).indexOf(fStyle) >= 0);
@@ -80,15 +122,16 @@
     $('#closet-grid').innerHTML = list.length ? list.map(function (m) {
       var c = m.clothing;
       var packed = packedItem(m);
+      var loc = App.locOf(m);
       return '<div class="cloth"><a class="cloth-link" href="#closet/' + encodeURIComponent(m.id) + '">' +
         '<div class="ph">' + (m.photoId ? '<img data-photo="' + esc(m.photoId) + '" alt="' + esc(m.name) + '">' : '') +
-        (packed ? '<span class="packed">已打包</span>' : '') + '</div>' +
+        (loc.state === 'pending' ? '<span class="packed pending">待確認</span>' : packed ? '<span class="packed">已打包</span>' : '') + '</div>' +
         '<div class="meta"><span class="t">' + esc(m.name) + '</span><span class="dots">' +
         (c.colors || []).map(function (n) {
           return '<i style="background:' + C.colorHex(n) + '" title="' + esc(n) + '"></i>';
         }).join('') + '</span></div>' +
         '<div class="brand">' + esc([C.typeName(c) !== m.name ? C.typeName(c) : '', c.brand].filter(Boolean).join('・')) + '&nbsp;</div>' +
-        '<div class="home">' + (c.home ? '📍 ' + esc(c.home) : '<span class="muted">📍 未設定家</span>') + '</div>' +
+        '<div class="home' + (loc.state === 'none' ? ' muted' : '') + '">' + esc(App.locText(loc)) + '</div>' +
         '</a>' +
         '<button type="button" class="cloth-pack' + (packed ? ' done' : '') + '" data-pack="' + esc(m.id) + '">' +
         (packed ? '✓ 已打包・' + esc(bagName(packed.bagId)) : '放進行李') + '</button>' +
@@ -296,6 +339,7 @@
     $('#cf-extra').hidden = !m;
     if (m) renderPack();
     renderStraps(m);
+    renderLocation(m);
     syncHeavy();
   }
 
@@ -308,6 +352,7 @@
     var weight = isFinite(grams) && grams >= 0 ? grams / 1000 : refWeight(tags);
 
     var isNew = !editing;
+    var before = isNew ? null : App.locOf(App.entryById(editing));
     var m = isNew
       ? App.normalizeEntry({ unit: '個', category: '必備品', bagId: st().bags[0] && st().bags[0].id, uses: 0 })
       : App.entryById(editing);
@@ -317,6 +362,11 @@
     m.clothing = JSON.parse(JSON.stringify(tags));
     m.updatedAt = Date.now();
     if (isNew) st().memory.push(m);
+    // 「放在哪個家」改了，而且不在行李裡：當作搬到那個家（記一筆移動紀錄）
+    if (tags.home) {
+      if (isNew) { m.moves = [{ home: tags.home, date: App.todayStr() }]; m.location = { state: 'home', home: tags.home, since: App.todayStr() }; }
+      else if (before && before.state !== 'packed' && before.state !== 'pending' && before.home !== tags.home) App.markHome(m, tags.home, App.todayStr(), true);
+    }
 
     var oldPhotoId = null;
     if (photoRemoved && !newPhoto && m.photoId) { oldPhotoId = m.photoId; m.photoId = null; }
@@ -353,6 +403,7 @@
       App.toast('已放進' + bagName(bagId) + '：' + m.name);
     }
     renderPack();
+    renderLocation(m);
   });
 
   $('#cf-delete').addEventListener('click', function () {

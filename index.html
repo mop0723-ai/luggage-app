@@ -22,6 +22,7 @@
       </div>
 
       <div id="next-trip" class="card next-trip"></div>
+      <div id="arrival-banner" class="card arrival-banner" hidden></div>
 
       <div class="total-row">
         <div>
@@ -270,6 +271,15 @@
 
         <button type="submit" class="btn primary">儲存</button>
 
+        <div id="cf-loc" class="card loc-box" hidden>
+          <div class="field-title">目前位置</div>
+          <div id="cf-loc-now" class="loc-now"></div>
+          <div class="field-title">移動紀錄</div>
+          <div id="cf-loc-moves" class="loc-moves muted"></div>
+          <div class="field-title">移到另一個家 <span class="muted small">沒有行程時也可以手動移動</span></div>
+          <div id="cf-loc-btns" class="chips"></div>
+        </div>
+
         <div id="cf-straps" class="card straps-box" hidden>
           <div class="field-title">可以搭配的錶帶</div>
           <div id="cf-straps-list" class="pick-strip"></div>
@@ -306,6 +316,33 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+  <!-- 整理行李 -->
+  <div id="org-sheet" class="sheet" hidden>
+    <div class="sheet-panel org-panel" role="dialog" aria-modal="true" aria-labelledby="org-title">
+      <div id="org-title" class="sheet-title">整理行李</div>
+      <p id="org-sub" class="muted small center org-sub"></p>
+
+      <div class="org-head"><span class="field-title">行李裡的物品</span>
+        <span class="org-all"><button type="button" class="link small" id="org-all-stay">全部留下</button>
+        <button type="button" class="link small" id="org-all-go">全部帶走</button></span></div>
+      <div id="org-packed"></div>
+
+      <div id="org-home-wrap">
+        <div class="field-title org-home-title" id="org-home-title"></div>
+        <label class="org-bag-row">放進
+          <select id="org-bag"></select>
+        </label>
+        <div id="org-home"></div>
+      </div>
+
+      <p id="org-summary" class="org-summary"></p>
+      <div class="cloud-btns">
+        <button type="button" id="org-later" class="btn ghost">稍後再整理</button>
+        <button type="button" id="org-ok" class="btn primary">確認</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 24 小時制時間選擇器 -->
   <div id="time-sheet" class="sheet" hidden>
     <div class="sheet-panel tp-panel" role="dialog" aria-modal="true" aria-labelledby="time-sheet-title">
@@ -339,6 +376,7 @@
   <script src="app.js"></script>
   <script src="closet.js"></script>
   <script src="trips.js"></script>
+  <script src="organize.js"></script>
   <script src="backup.js"></script>
   <script src="vendor/supabase.js"></script>
   <script src="cloud.js"></script>

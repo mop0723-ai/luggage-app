@@ -867,3 +867,47 @@ input[type="date"]::-webkit-date-and-time-value { text-align: left; }
 }
 .tp-item.on { background: var(--primary); color: #fff; font-weight: 700; }
 .tp-panel > .btn.ghost:last-child { margin-top: 0; }
+
+/* ---------- 物品位置、整理行李 ---------- */
+.cloth .packed.pending { background: #f59e0b; }
+.loc-box { margin-top: 14px; }
+.loc-now { font-weight: 700; margin-bottom: 10px; }
+.loc-moves { margin-bottom: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.arrival-banner { border-left: 4px solid #10b981; background: #ecfdf5; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.arrival-text { flex: 1; min-width: 200px; line-height: 1.6; }
+.arrival-btns { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.org-panel { max-width: 560px; max-height: 92vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.org-sub { margin: -8px 0 14px; }
+.org-head { display: flex; justify-content: space-between; align-items: center; }
+.org-all .link { padding: 4px 6px; }
+.org-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: none;
+  font: inherit;
+  color: var(--text);
+  text-align: left;
+}
+.org-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.org-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.org-thumb { width: 40px; height: 40px; flex: none; border-radius: 8px; object-fit: cover; background: var(--line); display: block; }
+.org-thumb.no-photo { visibility: hidden; }
+.org-seg { flex: none; margin: 0; }
+.org-seg button { min-width: 0; padding: 0 10px; font-size: 0.85rem; min-height: 38px; white-space: nowrap; }
+.org-home-title { margin-top: 16px; }
+.org-bag-row { display: flex !important; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 0.9rem; color: var(--muted); }
+.org-bag-row select { margin: 0; width: auto; flex: 1; }
+.org-pick { cursor: pointer; }
+.org-check {
+  width: 26px; height: 26px; flex: none;
+  border: 2px solid #cbd5e1; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-weight: 800;
+}
+.org-pick.on .org-check { background: var(--primary); border-color: var(--primary); }
+.org-summary { margin: 14px 0 10px; text-align: center; font-weight: 700; color: var(--primary); }
