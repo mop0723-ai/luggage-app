@@ -316,6 +316,19 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+  <!-- 輸入文字（「其他」、新增家） -->
+  <div id="ask-sheet" class="sheet ask-sheet" hidden>
+    <form id="ask-form" class="sheet-panel ask-panel" autocomplete="off">
+      <div id="ask-title" class="sheet-title">請輸入</div>
+      <input id="ask-input" maxlength="20" enterkeyhint="done" autocomplete="off" autocapitalize="off">
+      <p id="ask-hint" class="muted small ask-hint" hidden></p>
+      <div class="cloud-btns">
+        <button type="button" id="ask-cancel" class="btn ghost">取消</button>
+        <button type="submit" class="btn primary">確認</button>
+      </div>
+    </form>
+  </div>
+
   <!-- 整理行李 -->
   <div id="org-sheet" class="sheet" hidden>
     <div class="sheet-panel org-panel" role="dialog" aria-modal="true" aria-labelledby="org-title">

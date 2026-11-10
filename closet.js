@@ -218,6 +218,8 @@
     brands: App.allBrands,
     homes: App.homes,
     addHome: App.addHome,
+    customs: App.customs,
+    addCustom: App.addCustom,
     watches: function () {
       // 編輯手錶時，不列出自己
       return App.watches().filter(function (w) { return w.id !== editing; });

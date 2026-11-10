@@ -25,6 +25,7 @@ window.REFERENCE_WEIGHTS = [
   { name: 'T恤', weight: 0.15, category: '必備品', aliases: ['短袖', '短T', 'tshirt', '上衣'] },
   { name: '長袖上衣', weight: 0.25, category: '必備品', aliases: ['長袖', '長T'] },
   { name: '襯衫', weight: 0.2, category: '必備品', aliases: ['白襯衫', '襯衣'] },
+  { name: '帽T', weight: 0.45, category: '必備品', aliases: ['帽踢', '連帽上衣', '連帽衫', 'hoodie'] },
   { name: '背心', weight: 0.1, category: '必備品', aliases: ['無袖', '坦克背心', '細肩帶'] },
   { name: '針織衫', weight: 0.3, category: '必備品', aliases: ['針織外套', '開襟衫'] },
   { name: '毛衣', weight: 0.45, category: '必備品', aliases: ['針織上衣'] },

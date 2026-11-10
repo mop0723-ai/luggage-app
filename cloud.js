@@ -378,12 +378,13 @@
       // 不要在這個 callback 裡直接呼叫 Supabase，延後一下再處理
       setTimeout(function () {
         if (event === 'PASSWORD_RECOVERY') {
-          var pw = prompt('請輸入新密碼（至少 6 個字）');
-          if (pw && pw.length >= 6) {
-            client.auth.updateUser({ password: pw }).then(function (res) {
-              App.toast(res.error ? friendly(res.error) : '密碼已更新');
-            });
-          }
+          window.Clothing.askText('設定新密碼', '至少 6 個字').then(function (pw) {
+            if (pw && pw.length >= 6) {
+              client.auth.updateUser({ password: pw }).then(function (res) {
+                App.toast(res.error ? friendly(res.error) : '密碼已更新');
+              });
+            } else if (pw !== null) App.toast('密碼至少要 6 個字');
+          });
         }
         var uid = user ? user.id : null;
         if (uid !== lastUserId) {

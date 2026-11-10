@@ -911,3 +911,17 @@ input[type="date"]::-webkit-date-and-time-value { text-align: left; }
 }
 .org-pick.on .org-check { background: var(--primary); border-color: var(--primary); }
 .org-summary { margin: 14px 0 10px; text-align: center; font-weight: 700; color: var(--primary); }
+
+/* ---------- 輸入文字視窗 ---------- */
+.ask-sheet { z-index: 30; }
+.ask-panel { max-width: 420px; }
+.ask-panel input { margin: 0 0 8px; font-size: 18px; }
+.ask-hint { margin: 0 0 12px; }
+@media (max-width: 599px) {
+  /* 手機：視窗放在上方，避免被鍵盤擋住 */
+  .ask-sheet { align-items: flex-start; padding-top: 12vh; }
+  .ask-sheet .ask-panel { border-radius: 20px; margin: 0 12px; }
+}
+@media (min-width: 600px) {
+  .ask-sheet { align-items: flex-start; padding-top: 18vh; }
+}

@@ -22,6 +22,62 @@
 
   var OTHER = '其他';
 
+  /*
+   * 輸入文字的小視窗（取代瀏覽器內建的 prompt，iPad 上比較穩）
+   * 按「確認」、鍵盤 Enter、或 iPad 鍵盤上方的「完成」都會確認；回傳 Promise：文字，取消則是 null
+   */
+  var askState = null;
+  function askText(title, placeholder, hint) {
+    var sheet = document.getElementById('ask-sheet');
+    var input = document.getElementById('ask-input');
+    if (askState) askState.resolve(null);
+    return new Promise(function (resolve) {
+      askState = { resolve: resolve, cancelling: false };
+      document.getElementById('ask-title').textContent = title;
+      document.getElementById('ask-hint').textContent = hint || '';
+      document.getElementById('ask-hint').hidden = !hint;
+      input.value = '';
+      input.placeholder = placeholder || '';
+      sheet.hidden = false;
+      setTimeout(function () { input.focus(); }, 50);
+    });
+  }
+  function askFinish(value) {
+    if (!askState) return;
+    var st = askState;
+    askState = null;
+    document.getElementById('ask-sheet').hidden = true;
+    document.getElementById('ask-input').blur();
+    st.resolve(value);
+  }
+  (function bindAsk() {
+    var form = document.getElementById('ask-form');
+    var input = document.getElementById('ask-input');
+    var cancel = document.getElementById('ask-cancel');
+    if (!form) return;
+    form.addEventListener('submit', function (e) { e.preventDefault(); askFinish(input.value); });
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); askFinish(input.value); }
+    });
+    // 按「取消」或點視窗外面：不存
+    function markCancel() { if (askState) askState.cancelling = true; }
+    cancel.addEventListener('pointerdown', markCancel);
+    cancel.addEventListener('mousedown', markCancel);
+    cancel.addEventListener('click', function () { askFinish(null); });
+    document.getElementById('ask-sheet').addEventListener('click', function (e) {
+      if (e.target.id === 'ask-sheet') askFinish(null);
+    });
+    document.getElementById('ask-sheet').addEventListener('pointerdown', function (e) {
+      if (e.target.id === 'ask-sheet') markCancel();
+    });
+    // iPad 鍵盤上方的「完成」只會讓輸入框失去焦點：有打字就當作確認
+    input.addEventListener('blur', function () {
+      setTimeout(function () {
+        if (askState && !askState.cancelling && input.value.trim()) askFinish(input.value);
+      }, 150);
+    });
+  })();
+
   // ---------- 顏色 ----------
   var HEX = {
     '黑': '#111827', '白': '#ffffff', '灰': '#9ca3af', '米': '#e8dcc4', '咖啡': '#7c4a2d', '藍': '#3b82f6',
@@ -59,7 +115,7 @@
   };
 
   var GROUPS = [
-    { name: '上衣', part: 'top', types: ['T 恤', '襯衫', '背心', '毛衣', '針織衫', OTHER] },
+    { name: '上衣', part: 'top', types: ['T 恤', '帽T', '襯衫', '背心', '毛衣', '針織衫', OTHER] },
     { name: '下身', part: 'bottom', types: ['長褲', '牛仔褲', '短褲', '裙子', OTHER] },
     { name: '洋裝／連身', part: 'full', types: [] },
     { name: '外套', part: 'outer', types: ['外套', '大衣', '羽絨衣', OTHER] },
@@ -191,7 +247,17 @@
   }
 
   // ---------- 換種類時清掉不適用的值 ----------
-  function sanitize(tags) {
+  // 自己輸入過的選項，依「欄位＋種類」分開記
+  //   配件：每種配件的選項不同，依種類記（例如 colors@配件/皮帶）
+  //   衣服、鞋子、帽子、圍巾：同一大類共用（例如 colors@上衣，襯衫和 T 恤都看得到）
+  function ctxKey(tags, key) {
+    if (key === 'type') return 'type@' + (tags.group || '');
+    if (key === 'subtype') return 'subtype@' + (tags.group || '') + '/' + (tags.type || '');
+    if (tags.group === '配件') return key + '@配件/' + (tags.type || '');
+    return key + '@' + (tags.group || '');
+  }
+
+  function sanitize(tags, extend) {
     var fields = fieldsFor(tags);
     // type 可能影響 subtype 的選項，所以重算兩次
     for (var round = 0; round < 2; round++) {
@@ -201,7 +267,7 @@
         var isArr = Array.isArray(empty()[key]);
         if (!f) { tags[key] = isArr ? [] : ''; return; }
         if (f.kind === 'watches') return;
-        var opts = f.options;
+        var opts = extend ? extend(f, tags) : f.options;
         if (isArr) tags[key] = (tags[key] || []).filter(function (v) { return opts.indexOf(v) >= 0; });
         else if (tags[key] && opts.indexOf(tags[key]) < 0) tags[key] = '';
       });
@@ -315,6 +381,7 @@
    * opts.onChange(tags, key)：任何標籤改變時呼叫
    * opts.brands()：品牌建議；opts.homes()／opts.addHome(name)：家
    * opts.watches()：衣櫃裡的手錶 [{ id, name }]（錶帶用）
+   * opts.customs(ctx)／opts.addCustom(ctx, value)：自己輸入過的選項
    */
   function createPicker(el, opts) {
     opts = opts || {};
@@ -331,6 +398,16 @@
       '<datalist id="' + listId + '"></datalist></label>';
 
     var q = function (sel) { return el.querySelector(sel); };
+
+    // 選項＝原本的選項＋自己輸入過的（放在「其他」前面）
+    function withCustom(f, t) {
+      if (!f.options || f.noOther || f.options.indexOf(OTHER) < 0) return f.options;
+      var extra = (opts.customs ? opts.customs(ctxKey(t || tags, f.key)) : []).filter(function (x) {
+        return x && f.options.indexOf(x) < 0;
+      });
+      var base = f.options.filter(function (o) { return o !== OTHER; });
+      return base.concat(extra, OTHER);
+    }
 
     function fieldHTML(f) {
       var title = '<div class="field-title">' + esc(f.label) +
@@ -349,7 +426,7 @@
           '<label class="inline-cm">實際長度（選填）<span class="cm-row"><input data-k="lengthCm" type="number" inputmode="decimal" min="0" step="any" placeholder="例如 105" value="' +
           (tags.lengthCm != null ? esc(tags.lengthCm) : '') + '"><span class="unit-text">公分</span></span></label>';
       }
-      var opt = f.noOther ? f.options : f.options;
+      var opt = withCustom(f);
       var box = '<div class="chips pick" data-k="' + f.key + '"' + (f.kind === 'many' ? ' data-many' : '') + '>' +
         optionChips({ options: opt, kind: f.kind, swatch: f.swatch }, tags[f.key]) + '</div>';
       return title + (f.sub ? '<div class="sub-types">' + box + '</div>' : box);
@@ -375,12 +452,14 @@
 
     el.addEventListener('click', function (e) {
       if (e.target.closest('[data-add-home]')) {
-        var n = (prompt('新增一個家（例如：東京）') || '').trim().slice(0, 20);
-        if (n && opts.addHome) {
-          opts.addHome(n);
-          tags.home = n;
-          changed('home');
-        }
+        askText('新增一個家', '例如：東京').then(function (n) {
+          n = (n || '').trim().slice(0, 20);
+          if (n && opts.addHome) {
+            opts.addHome(n);
+            tags.home = n;
+            changed('home');
+          }
+        });
         return;
       }
       var c = e.target.closest('.pick [data-v]');
@@ -392,15 +471,25 @@
 
       // 「其他」：自己輸入
       if (v === OTHER && !c.hasAttribute('data-custom')) {
-        var input = prompt('請輸入' + (key === 'colors' ? '顏色' : '內容') + '（不輸入直接按確定，就記成「其他」）');
-        if (input === null) return;
-        input = input.trim().slice(0, 20) || OTHER;
-        v = input;
-        if (many) {
-          if (tags[key].indexOf(v) < 0) tags[key].push(v);
-        } else {
-          tags[key] = v;
-        }
+        var title = box.previousElementSibling && box.previousElementSibling.classList.contains('field-title')
+          ? box.previousElementSibling.textContent.replace('可複選', '').trim()
+          : (box.closest('.sub-types') && box.closest('.sub-types').previousElementSibling
+            ? box.closest('.sub-types').previousElementSibling.textContent.trim() : '內容');
+        askText('自己輸入「' + title + '」', '例如：' + (key === 'colors' ? '酒紅' : '自己的叫法'),
+          '下次在同一種類會直接出現成選項。不輸入直接按確認，就記成「其他」。').then(function (input) {
+          if (input === null) return;
+          input = input.trim().slice(0, 20) || OTHER;
+          if (input !== OTHER && opts.addCustom) opts.addCustom(ctxKey(tags, key), input);
+          if (many) {
+            if (!tags[key]) tags[key] = [];
+            if (tags[key].indexOf(input) < 0) tags[key].push(input);
+          } else {
+            tags[key] = input;
+          }
+          if (key === 'group' || key === 'type' || key === 'subtype') sanitize(tags, withCustom);
+          changed(key);
+        });
+        return;
       } else if (many) {
         var arr = tags[key] || (tags[key] = []);
         var i = arr.indexOf(v);
@@ -410,7 +499,7 @@
       }
 
       // 換大類、細項時，清掉不適用的選項
-      if (key === 'group' || key === 'type' || key === 'subtype') sanitize(tags);
+      if (key === 'group' || key === 'type' || key === 'subtype') sanitize(tags, withCustom);
       changed(key);
     });
 
@@ -438,7 +527,7 @@
       // 自動猜到種類時套用，並清掉不適用的值
       apply: function (patch) {
         Object.assign(tags, patch);
-        sanitize(tags);
+        sanitize(tags, withCustom);
         render();
       },
       render: render
@@ -452,6 +541,6 @@
   window.Clothing = {
     OTHER: OTHER, GROUPS: GROUPS, SEASONS: SEASONS, STYLES: STYLES, ALL_COLORS: ALL_COLORS,
     groupOf: groupOf, colorHex: colorHex, empty: empty, hasTags: hasTags, typeName: typeName, refName: refName,
-    guess: guess, upgrade: upgrade, fromOld: fromOld, fieldsFor: fieldsFor, createPicker: createPicker
+    guess: guess, upgrade: upgrade, fromOld: fromOld, fieldsFor: fieldsFor, createPicker: createPicker, askText: askText
   };
 })();

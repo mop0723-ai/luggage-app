@@ -43,6 +43,7 @@
    * outfits 預留：模擬穿搭 { id, date, place, weather, parts: { top, bottom, full, outer, shoes, accessory[] } }
    * sync    預留：雲端帳號 { userId, lastSyncedAt }
    * homes   「家」的清單，衣服標籤的 clothing.home 會是其中之一
+   * customOptions  在「其他」自己輸入過的選項：{ 'colors@配件/皮帶': ['酒紅'], … }
    * legacyWardrobe 上一版衣櫃的原始資料，留著備份
    * trips  旅程：{ id, name, origin, endHome, legs[], createdAt, updatedAt,
    *            endHome：最後一段結束後回到哪個家（null＝還沒設定，依最後一段抵達城市判斷；''＝未定／不回家）
@@ -174,6 +175,7 @@
 
     if (!Array.isArray(s.outfits)) s.outfits = [];
     if (!Array.isArray(s.homes)) s.homes = DEFAULT_HOMES.slice();
+    if (!s.customOptions || typeof s.customOptions !== 'object') s.customOptions = {};
     if (!Array.isArray(s.trips)) s.trips = [];
     s.trips.forEach(normalizeTrip);
     s.bags.forEach(function (b) { if (!b.kind) b.kind = guessBagKind(b.name); });
@@ -561,6 +563,14 @@
 
   // ---------- 家 ----------
   function homes() { return state.homes; }
+
+  // 自己輸入過的選項
+  function customs(ctx) { return (state.customOptions || {})[ctx] || []; }
+  function addCustom(ctx, value) {
+    if (!state.customOptions) state.customOptions = {};
+    var list = state.customOptions[ctx] || (state.customOptions[ctx] = []);
+    if (list.indexOf(value) < 0) { list.push(value); save(); }
+  }
   function addHome(name) {
     if (state.homes.indexOf(name) < 0) { state.homes.push(name); save(); }
   }
@@ -673,6 +683,8 @@
     brands: allBrands,
     homes: homes,
     addHome: addHome,
+    customs: customs,
+    addCustom: addCustom,
     watches: watches,
     onChange: function (tags, key) {
       tagsTouched = true;
@@ -1079,6 +1091,8 @@
     dropPhotoIfUnused: dropPhotoIfUnused,
     homes: homes,
     addHome: addHome,
+    customs: customs,
+    addCustom: addCustom,
     watches: watches,
     nextLeg: nextLeg,
     normalizeTrip: normalizeTrip,
