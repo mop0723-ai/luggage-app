@@ -113,5 +113,25 @@
     });
   }
 
-  window.Photos = { compress: compress, put: put, get: get, del: del, url: url, fillThumbs: fillThumbs };
+  // 列出所有照片（備份用）：[{ id, photo }]
+  function list() {
+    return openDB().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var out = [];
+        var t = db.transaction('photos', 'readonly');
+        var req = t.objectStore('photos').openCursor();
+        req.onsuccess = function () {
+          var cur = req.result;
+          if (!cur) return;
+          var v = cur.value;
+          out.push({ id: cur.key, photo: v instanceof Blob ? { blob: v } : v });
+          cur.continue();
+        };
+        t.oncomplete = function () { resolve(out); };
+        t.onerror = function () { reject(t.error); };
+      });
+    });
+  }
+
+  window.Photos = { compress: compress, put: put, get: get, del: del, url: url, fillThumbs: fillThumbs, list: list };
 })();

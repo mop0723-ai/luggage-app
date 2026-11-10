@@ -728,3 +728,36 @@ a.pick-tile { text-decoration: none; }
 .cal-cell.in-trip { overflow: visible; }
 .cal-bar { overflow: visible; text-overflow: clip; }
 .cal-bar .nm { position: relative; z-index: 1; }
+
+/* ---------- 備份與雲端 ---------- */
+.cloud-pill {
+  display: block;
+  margin: 0 0 10px auto;
+  border: 0;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font: inherit;
+  font-size: 0.8rem;
+  background: var(--card);
+  color: var(--muted);
+  cursor: pointer;
+}
+.cloud-pill.ok { color: var(--ok); }
+.cloud-pill.syncing { color: var(--primary); }
+.cloud-pill.error { color: var(--bad); background: var(--bad-bg); }
+.cloud-pill.offline { color: var(--warn); }
+.cloud-card { margin-top: 14px; }
+.cloud-card .muted.small { margin: 0 0 10px; }
+.cloud-btns { display: flex; gap: 10px; margin-bottom: 10px; }
+.cloud-btns .btn { flex: 1; }
+.file-btn { display: flex; align-items: center; justify-content: center; position: relative; cursor: pointer; color: var(--primary); margin: 0 !important; font-size: 1rem !important; }
+.file-btn input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.download-btn { display: flex; align-items: center; justify-content: center; text-decoration: none; margin-bottom: 10px; padding: 0 12px; text-align: center; }
+.cloud-hr { border: 0; border-top: 1px solid var(--line); margin: 14px 0; }
+.cloud-user { margin-bottom: 6px; overflow-wrap: anywhere; }
+.cloud-status { margin-bottom: 12px; font-size: 0.9rem; color: var(--muted); }
+.cloud-status.ok { color: var(--ok); }
+.cloud-status.error { color: var(--bad); }
+.cloud-status.offline { color: var(--warn); }
+.cloud-status.syncing { color: var(--primary); }
+.cloud-card label.file-btn { display: flex; align-items: center; justify-content: center; color: var(--primary); font-weight: 700; }

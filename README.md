@@ -33,6 +33,19 @@ https://mop0723-ai.github.io/luggage-app/
 - **年度行事曆**：行程頁可切換「列表／月曆／年度時間軸」。月曆與年度色條顯示每趟旅程的日期區間；
   兩趟之間的空檔顯示回到哪個家、待幾天。每趟可設定「最後一段結束後回到哪個家」，新增下一趟時預設從那個家出發。
 
+- **備份**：首頁「備份與雲端同步」可匯出／匯入備份檔（含所有資料與照片）（`backup.js`）。
+- **雲端同步（Supabase）**：Email＋密碼登入；資料存在 `app_state` 資料表（每人一筆），照片存在 Storage 的 `photos`
+  bucket（`<帳號 id>/<照片 id>.jpg`），以 Row Level Security 限制只能存取自己的資料（`cloud.js`）。
+  資料先存在本機，有網路時自動同步；兩台裝置都改過時以上次同步內容為基準逐筆合併。
+  程式只使用 publishable（公開）金鑰，不含 service_role 金鑰。Supabase 程式庫放在 `vendor/supabase.js`（v2.117.3）。
+- **離線使用**：`sw.js`（Service Worker）快取 app 檔案，沒有網路也能打開。
+
+## Supabase 設定
+
+1. 在 Supabase 的 SQL Editor 執行 `supabase/setup.sql`（建立資料表、照片空間與 RLS 規則，可重複執行）。
+2. Authentication → Sign In / Providers：確認 Email 已開啟。
+3. Authentication → URL Configuration：Site URL 設為 `https://mop0723-ai.github.io/luggage-app/`。
+
 ## 資料結構
 
 說明寫在 `app.js` 開頭。重點：

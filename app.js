@@ -181,6 +181,21 @@
   function save() {
     try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
     catch (e) { toast('無法儲存（瀏覽器可能在私密模式）'); }
+    // 有登入雲端的話，稍後自動同步
+    if (window.Cloud) window.Cloud.schedule();
+  }
+
+  // 雲端合併後套用到這台裝置（不會再觸發同步）
+  function replaceState(next) {
+    state = migrate(JSON.parse(JSON.stringify(next)));
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { /* 下次再存 */ }
+    refreshView();
+  }
+
+  // 重畫目前的畫面；正在填表單（編輯衣服、旅程）時先不重畫，避免打斷
+  function refreshView() {
+    if (/\//.test(location.hash)) return;
+    route();
   }
 
   var state = load();
@@ -959,6 +974,8 @@
 
   // 給衣櫃（closet.js）使用的共用功能
   window.App = {
+    replaceState: replaceState,
+    refreshView: refreshView,
     state: function () { return state; },
     save: save,
     toast: toast,
@@ -991,15 +1008,18 @@
 
   // 啟動時檢查：照片其實不存在的（例如上一版沒拍照的衣服），改成沒有照片
   function checkPhotos() {
-    var withPhoto = state.memory.filter(function (m) { return m.photoId; });
+    // 只檢查上一版衣櫃轉過來的衣服（照片 id 沿用舊衣服 id）；其他照片可能還在雲端等下載，不能清掉
+    var legacy = (state.legacyWardrobe || []).map(function (w) { return w.id; });
+    if (state.legacyPhotosChecked) return;
+    var withPhoto = state.memory.filter(function (m) { return m.photoId && legacy.indexOf(m.photoId) >= 0; });
     Promise.all(withPhoto.map(function (m) {
       return Photos.get(m.photoId).then(function (p) { return p ? null : m; }).catch(function () { return null; });
     })).then(function (missing) {
       missing = missing.filter(Boolean);
-      if (!missing.length) return;
       missing.forEach(function (m) { m.photoId = null; });
+      state.legacyPhotosChecked = true;
       save();
-      route();
+      if (missing.length) route();
     });
   }
 
@@ -1008,4 +1028,11 @@
     route();
     checkPhotos();
   });
+
+  // 讓 app 沒有網路時也能打開
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function () { /* 不支援就算了 */ });
+    });
+  }
 })();

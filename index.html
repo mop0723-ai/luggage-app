@@ -14,6 +14,7 @@
   <main>
     <!-- 首頁 -->
     <section id="view-home" class="view">
+      <button type="button" id="cloud-pill" class="cloud-pill off" onclick="document.getElementById('cloud-card').scrollIntoView({behavior:'smooth'})">☁️ 未登入雲端</button>
       <div id="remain-card" class="remain-card">
         <div class="remain-label">剩餘可購物公斤數</div>
         <div class="remain-value"><span id="remain-num">0.0</span><small> kg</small></div>
@@ -41,6 +42,18 @@
         <p id="allowance-note" class="allowance-note" hidden>✈️ 目前有下一段航班，首頁上限依那段的額度計算；這裡的「上限」在沒有排行程、或航班沒填某項額度時使用。「類型」決定每個行李對應航班的哪一項額度。</p>
         <div id="bag-settings"></div>
         <button type="button" id="add-bag" class="btn ghost">＋ 新增一個行李</button>
+      </div>
+
+      <div id="cloud-card" class="card cloud-card form">
+        <div class="card-head"><span>備份與雲端同步</span></div>
+        <p class="muted small">備份檔包含所有資料和照片，可以存到「檔案」App。接上雲端前，建議先備份一次。</p>
+        <div class="cloud-btns">
+          <button type="button" id="backup-export" class="btn ghost">匯出備份</button>
+          <label class="btn ghost file-btn">匯入備份<input id="backup-import" type="file" accept=".json,application/json"></label>
+        </div>
+        <a id="backup-download" class="btn primary download-btn" hidden>下載備份檔</a>
+        <hr class="cloud-hr">
+        <div id="cloud-box"></div>
       </div>
     </section>
 
@@ -308,5 +321,8 @@
   <script src="app.js"></script>
   <script src="closet.js"></script>
   <script src="trips.js"></script>
+  <script src="backup.js"></script>
+  <script src="vendor/supabase.js"></script>
+  <script src="cloud.js"></script>
 </body>
 </html>
