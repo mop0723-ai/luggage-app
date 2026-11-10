@@ -799,3 +799,71 @@ a.pick-tile { text-decoration: none; }
 .ct.transit { background: #64748b; }
 .ct.enter { background: #2563eb; }
 input.invalid { border-color: var(--bad); outline: 2px solid var(--bad); outline-offset: -1px; }
+
+/* ---------- 編輯行程：欄位間距、日期與時間欄位 ---------- */
+.leg-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 12px; }
+.leg-grid label, .leg-grid .time-field { margin-bottom: 14px; }
+/* iPad 的日期欄位：固定高度、不要撐出格子 */
+input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+  width: 100%;
+  height: 44px;
+  line-height: 22px;
+  text-align: left;
+}
+input[type="date"]::-webkit-date-and-time-value { text-align: left; }
+.time-field { display: block; font-size: 0.9rem; color: var(--muted); }
+.time-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 44px;
+  margin-top: 4px;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background: #fff;
+  font: inherit;
+  font-size: 16px;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+.time-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: -1px; border-color: transparent; }
+.time-btn .ph { color: #9ca3af; }
+.time-btn .clock { color: var(--text); flex: none; }
+
+.tp-panel { max-width: 360px; }
+.tp-preview { text-align: center; font-size: 2.2rem; font-weight: 800; font-variant-numeric: tabular-nums; margin: -6px 0 8px; color: var(--primary); }
+.tp-cols { display: flex; align-items: stretch; gap: 8px; margin-bottom: 14px; }
+.tp-col { flex: 1; min-width: 0; }
+.tp-head { text-align: center; font-size: 0.8rem; color: var(--muted); margin-bottom: 4px; }
+.tp-sep { align-self: center; font-size: 1.6rem; font-weight: 800; color: var(--muted); padding-top: 16px; }
+.tp-list {
+  height: 220px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 4px;
+  position: relative;
+}
+.tp-item {
+  display: block;
+  width: 100%;
+  min-height: 42px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  font-size: 1.15rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  cursor: pointer;
+}
+.tp-item.on { background: var(--primary); color: #fff; font-weight: 700; }
+.tp-panel > .btn.ghost:last-child { margin-top: 0; }

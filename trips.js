@@ -149,20 +149,21 @@
     return isFinite(n) && n >= 0 ? n : '';
   }
 
-  // 時間用數字輸入，固定 24 小時制：打 2330 會自動變成 23:30
-  var TIME_ATTRS = 'type="text" inputmode="numeric" maxlength="5" autocomplete="off" placeholder="例如 23:30"';
   var TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-  function formatTime(raw, final) {
-    var d = String(raw).replace(/\D/g, '').slice(0, 4);
-    if (final && d.length === 3) d = '0' + d;          // 905 → 09:05
-    if (final && d.length <= 2 && d) d = ('0' + d).slice(-2) + '00';   // 9 → 09:00
-    return d.length > 2 ? d.slice(0, 2) + ':' + d.slice(2) : d;
+  // 時間欄位：點一下跳出 24 小時制的選擇器（不用打字）
+  function timeBtnInner(v) {
+    return (v ? '<span class="tv">' + esc(v) + '</span>' : '<span class="tv ph">選擇時間</span>') +
+      '<svg class="clock" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
   }
 
   function legHTML(l, i, n) {
     var a = l.allowance || {};
     function input(field, label, attrs, value) {
+      if (attrs === 'time') {
+        return '<div class="time-field"><span class="time-label">' + label + '</span>' +
+          '<button type="button" class="time-btn" data-time-leg="' + i + '" data-time-field="' + field + '">' + timeBtnInner(value) + '</button></div>';
+      }
       return '<label>' + label + '<input data-leg="' + i + '" data-field="' + field + '" ' + attrs +
         ' value="' + esc(value == null ? '' : value) + '"></label>';
     }
@@ -177,9 +178,9 @@
       input('from', '出發城市', 'maxlength="30" placeholder="例如：台北"', l.from) +
       input('to', '抵達城市', 'maxlength="30" placeholder="例如：曼谷"', l.to) +
       input('date', '起飛日期', 'type="date"', l.date) +
-      input('depTime', '起飛時間（當地，24 小時）', TIME_ATTRS, l.depTime) +
+      input('depTime', '起飛時間（當地）', 'time', l.depTime) +
       input('arrDate', '抵達日期 <span class="muted">（同一天可不填）</span>', 'type="date"', l.arrDate) +
-      input('arrTime', '抵達時間（當地，24 小時）', TIME_ATTRS, l.arrTime) +
+      input('arrTime', '抵達時間（當地）', 'time', l.arrTime) +
       input('flightNo', '航班號碼', 'maxlength="12" placeholder="例如：BR211" autocapitalize="characters"', l.flightNo) +
       '<div class="span2">' + input('airline', '航空公司', 'maxlength="30" placeholder="例如：長榮航空"', l.airline) + '</div>' +
       '</div>' +
@@ -316,14 +317,6 @@
     if (i == null) return;
     var l = draft.legs[+i];
     var field = el.getAttribute('data-field');
-    if (field === 'depTime' || field === 'arrTime') {
-      var v = formatTime(el.value, false);
-      if (el.value !== v) el.value = v;
-      l[field] = TIME_RE.test(v) ? v : '';
-      el.classList.toggle('invalid', v.length === 5 && !TIME_RE.test(v));
-      refreshConn(+i);
-      return;
-    }
     if (['checked', 'carry', 'personal'].indexOf(field) >= 0) {
       l.allowance[field] = numVal(el.value);
     } else {
@@ -333,25 +326,18 @@
     }
   });
 
-  // 日期、時間選擇器有些瀏覽器只觸發 change
+  // 日期選擇器有些瀏覽器只觸發 change
   $('#trip-form').addEventListener('change', function (e) {
     var el = e.target, i = el.getAttribute('data-leg'), field = el.getAttribute('data-field');
     if (i == null) return;
-    if (field === 'depTime' || field === 'arrTime') {
-      // 離開欄位時補齊：905 → 09:05
-      var v = formatTime(el.value, true);
-      el.value = v;
-      draft.legs[+i][field] = TIME_RE.test(v) ? v : '';
-      el.classList.toggle('invalid', !!v && !TIME_RE.test(v));
-      refreshConn(+i);
-      return;
-    }
     if (['date', 'arrDate'].indexOf(field) < 0) return;
     draft.legs[+i][field] = el.value.trim();
     refreshConn(+i);
   });
 
   $('#trip-form').addEventListener('click', function (e) {
+    var tb = e.target.closest('[data-time-leg]');
+    if (tb) { openTimePicker(+tb.getAttribute('data-time-leg'), tb.getAttribute('data-time-field')); return; }
     var cs = e.target.closest('[data-conn-set]');
     if (cs) {
       var k = +cs.getAttribute('data-conn-set');
@@ -427,6 +413,73 @@
     App.toast('已刪除旅程');
     location.hash = '#trips';
   });
+
+  // ---------- 24 小時制時間選擇器 ----------
+  var tp = { leg: -1, field: '', h: null, m: null };
+  var HOURS = [], MINS = [];
+  for (var hh = 0; hh < 24; hh++) HOURS.push(pad2(hh));
+  for (var mm = 0; mm < 60; mm += 5) MINS.push(pad2(mm));
+
+  function openTimePicker(i, field) {
+    var l = draft.legs[i];
+    var v = TIME_RE.test(l[field] || '') ? l[field] : '';
+    tp = { leg: i, field: field, h: v ? v.slice(0, 2) : null, m: v ? v.slice(3) : null };
+    $('#time-sheet-title').textContent = '第 ' + (i + 1) + ' 段・' + (field === 'depTime' ? '起飛時間' : '抵達時間') +
+      '（' + ((field === 'depTime' ? l.from : l.to) || '當地') + '時間）';
+    renderTimePicker();
+    $('#time-sheet').hidden = false;
+    // 把選到的時間捲到中間；還沒選就從 08 點附近開始
+    ['#tp-hours', '#tp-mins'].forEach(function (sel) {
+      var list = $(sel);
+      var on = list.querySelector('.on') || (sel === '#tp-hours' ? list.children[8] : list.children[0]);
+      if (on) list.scrollTop = on.offsetTop - list.clientHeight / 2 + on.offsetHeight / 2;
+    });
+  }
+
+  function renderTimePicker() {
+    // 原本存的分鐘不是 5 的倍數（例如 04:12）也保留在清單裡
+    var mins = MINS.slice();
+    if (tp.m && mins.indexOf(tp.m) < 0) { mins.push(tp.m); mins.sort(); }
+    $('#tp-hours').innerHTML = HOURS.map(function (h) {
+      return '<button type="button" class="tp-item' + (h === tp.h ? ' on' : '') + '" data-tp-h="' + h + '">' + h + '</button>';
+    }).join('');
+    $('#tp-mins').innerHTML = mins.map(function (m) {
+      return '<button type="button" class="tp-item' + (m === tp.m ? ' on' : '') + '" data-tp-m="' + m + '">' + m + '</button>';
+    }).join('');
+    $('#tp-preview').textContent = (tp.h || '--') + ':' + (tp.m || (tp.h ? '00' : '--'));
+  }
+
+  function setTime(v) {
+    var l = draft.legs[tp.leg];
+    if (!l) return;
+    l[tp.field] = v;
+    var btn = $('#tf-legs [data-time-leg="' + tp.leg + '"][data-time-field="' + tp.field + '"]');
+    if (btn) btn.innerHTML = timeBtnInner(v);
+    refreshConn(tp.leg);
+  }
+
+  function closeTimePicker() { $('#time-sheet').hidden = true; }
+
+  $('#time-sheet').addEventListener('click', function (e) {
+    var t = e.target;
+    var h = t.closest('[data-tp-h]'), m = t.closest('[data-tp-m]');
+    if (h) { tp.h = h.getAttribute('data-tp-h'); markOn('#tp-hours', h); return; }
+    if (m) { tp.m = m.getAttribute('data-tp-m'); markOn('#tp-mins', m); return; }
+    if (t.id === 'tp-ok') {
+      if (!tp.h) { App.toast('請先選小時'); return; }
+      setTime(tp.h + ':' + (tp.m || '00'));
+      closeTimePicker();
+      return;
+    }
+    if (t.id === 'tp-clear') { setTime(''); closeTimePicker(); return; }
+    if (t.id === 'time-sheet' || t.id === 'tp-cancel') closeTimePicker();
+  });
+
+  function markOn(sel, el) {
+    $(sel).querySelectorAll('.on').forEach(function (x) { x.classList.remove('on'); });
+    el.classList.add('on');
+    $('#tp-preview').textContent = (tp.h || '--') + ':' + (tp.m || (tp.h ? '00' : '--'));
+  }
 
   // ---------- 行事曆：日期計算 ----------
   function parseD(d) { var p = d.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }

@@ -306,6 +306,24 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+  <!-- 24 小時制時間選擇器 -->
+  <div id="time-sheet" class="sheet" hidden>
+    <div class="sheet-panel tp-panel" role="dialog" aria-modal="true" aria-labelledby="time-sheet-title">
+      <div id="time-sheet-title" class="sheet-title">選擇時間</div>
+      <div id="tp-preview" class="tp-preview">--:--</div>
+      <div class="tp-cols">
+        <div class="tp-col"><div class="tp-head">時</div><div id="tp-hours" class="tp-list"></div></div>
+        <div class="tp-sep">:</div>
+        <div class="tp-col"><div class="tp-head">分</div><div id="tp-mins" class="tp-list"></div></div>
+      </div>
+      <div class="cloud-btns">
+        <button type="button" id="tp-clear" class="btn ghost">清除</button>
+        <button type="button" id="tp-ok" class="btn primary">確定</button>
+      </div>
+      <button type="button" id="tp-cancel" class="btn ghost">取消</button>
+    </div>
+  </div>
+
   <!-- 選擇要放進哪個行李 -->
   <div id="bag-sheet" class="sheet" hidden>
     <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="bag-sheet-title">
