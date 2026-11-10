@@ -647,3 +647,84 @@ a.pick-tile { text-decoration: none; }
 .allow-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 8px; }
 .allow-grid label { font-size: 0.8rem; }
 .save-trip { margin-top: 14px; }
+
+/* ---------- 年度行事曆 ---------- */
+.mode-seg { margin: 0 0 14px; background: #fff; }
+.mode-seg button { min-height: 40px; }
+.origin-hint { margin: -6px 0 6px; color: var(--primary); }
+.end-home-box { margin-top: 14px; }
+.end-home-box .field-title { margin-bottom: 2px; }
+.end-home-box p { margin: 0 0 10px; }
+
+.cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.cal-nav b { font-size: 1.1rem; }
+.cal-nav .icon-btn { font-size: 1.6rem; width: 44px; height: 44px; color: var(--primary); }
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  background: var(--card);
+  border-radius: var(--radius);
+  overflow: hidden;
+  padding: 6px 0;
+}
+.cal-wd { text-align: center; font-size: 0.75rem; color: var(--muted); padding: 4px 0; }
+.cal-cell {
+  min-height: 62px;
+  border-top: 1px solid var(--line);
+  padding: 3px 0 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-decoration: none;
+  color: var(--text);
+  overflow: hidden;
+}
+.cal-cell.empty { background: transparent; }
+.cal-num { font-size: 0.8rem; padding: 0 5px; }
+.cal-num.today { align-self: flex-start; margin-left: 3px; background: var(--primary); color: #fff; border-radius: 999px; padding: 0 6px; font-weight: 700; }
+.cal-bar {
+  display: block;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.6;
+  padding: 0 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cal-bar.first { margin-left: 3px; border-radius: 6px 0 0 6px; }
+.cal-bar.last { margin-right: 3px; border-radius: 0 6px 6px 0; }
+.cal-bar.first.last { border-radius: 6px; }
+.cal-home { display: flex; align-items: center; gap: 3px; font-size: 0.68rem; color: var(--muted); padding: 0 5px; white-space: nowrap; overflow: hidden; }
+.cal-home i, .cal-legend i, .tl-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.cal-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 10px 2px 0; font-size: 0.8rem; color: var(--muted); }
+.cal-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.cal-legend .trip-dot { background: linear-gradient(90deg, #2563eb, #db2777); }
+
+.year-strip { padding: 12px; }
+.year-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+.year-m { flex: none; width: 2.6em; font-size: 0.75rem; color: var(--muted); text-align: right; }
+.year-days { flex: 1; display: grid; grid-template-columns: repeat(31, minmax(0, 1fr)); gap: 1px; }
+.yd { display: block; height: 16px; border-radius: 2px; }
+.yd.trip { height: 20px; }
+.yd.today { outline: 2px solid #111827; outline-offset: -1px; }
+.timeline { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.tl-trip {
+  display: block;
+  background: var(--card);
+  border-radius: var(--radius);
+  border-left: 6px solid var(--primary);
+  padding: 12px 14px;
+  text-decoration: none;
+  color: var(--text);
+}
+.tl-trip:active { opacity: .8; }
+.tl-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.tl-gap { display: flex; align-items: flex-start; gap: 10px; padding: 4px 14px 4px 20px; }
+.tl-gap .tl-dot { width: 12px; height: 12px; margin-top: 5px; }
+.tl-gap.open b { color: var(--text); }
+/* 月曆：旅程名稱可以延伸到同一週後面幾天的色條上 */
+.cal-cell.in-trip { overflow: visible; }
+.cal-bar { overflow: visible; text-overflow: clip; }
+.cal-bar .nm { position: relative; z-index: 1; }

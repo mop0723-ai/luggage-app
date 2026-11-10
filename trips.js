@@ -108,12 +108,38 @@
     if (id && id !== 'new' && !t) { location.replace('#trips'); return; }
     editingId = t ? t.id : null;
     draft = t ? JSON.parse(JSON.stringify(t)) : App.normalizeTrip({ name: '', origin: '', legs: [] });
+    // 新旅程：出發地預設是「上一趟結束後回到的家」
+    var hint = '';
+    if (!t) {
+      var prev = lastTrip();
+      if (prev && endHomeOf(prev)) {
+        draft.origin = endHomeOf(prev);
+        hint = '依上一趟「' + prev.name + '」結束後回到的家帶入';
+      }
+    }
+    // 還沒設定過「結束後回到哪個家」，就依最後一段的抵達城市猜
+    if (draft.endHome == null) draft.endHome = guessEndHome(draft);
     if (!draft.legs.length) draft.legs.push(newLeg(null, draft.origin));
+    $('#tf-origin-hint').textContent = hint;
+    $('#tf-origin-hint').hidden = !hint;
     $('#tf-title').textContent = t ? '編輯旅程' : '新增旅程';
     $('#tf-name').value = draft.name;
     $('#tf-origin').value = draft.origin;
     $('#tf-delete').hidden = !t;
     renderLegs();
+    renderEndHome();
+  }
+
+  function guessEndHome(t) {
+    var last = t.legs[t.legs.length - 1];
+    return (last && homeFor(last.to)) || '';
+  }
+
+  function renderEndHome() {
+    var homes = App.homes();
+    $('#tf-end-home').innerHTML = homes.map(function (h) {
+      return '<button type="button" class="chip' + (draft.endHome === h ? ' on' : '') + '" data-end-home="' + esc(h) + '">🏠 ' + esc(h) + '</button>';
+    }).join('') + '<button type="button" class="chip' + (!draft.endHome ? ' on' : '') + '" data-end-home="">未定／不回家</button>';
   }
 
   function numVal(v) {
@@ -207,6 +233,13 @@
     }
   });
 
+  $('#tf-end-home').addEventListener('click', function (e) {
+    var c = e.target.closest('[data-end-home]');
+    if (!c) return;
+    draft.endHome = c.getAttribute('data-end-home');
+    renderEndHome();
+  });
+
   $('#tf-add-leg').addEventListener('click', function () {
     var prev = draft.legs[draft.legs.length - 1];
     draft.legs.push(newLeg(prev, prev ? prev.to : draft.origin));
@@ -246,16 +279,233 @@
     location.hash = '#trips';
   });
 
+  // ---------- 行事曆：日期計算 ----------
+  function parseD(d) { var p = d.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function ymd(dt) {
+    return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
+  }
+  function daysBetween(a, b) { // b - a（天）
+    var pa = a.split('-'), pb = b.split('-');
+    return Math.round((Date.UTC(+pb[0], +pb[1] - 1, +pb[2]) - Date.UTC(+pa[0], +pa[1] - 1, +pa[2])) / 86400000);
+  }
+  function addDays(d, n) { var dt = parseD(d); dt.setDate(dt.getDate() + n); return ymd(dt); }
+
+  function endHomeOf(t) { return t.endHome != null ? t.endHome : guessEndHome(t); }
+
+  // 有日期的旅程，依出發日排序，附上起訖日
+  function datedTrips() {
+    return st().trips.map(function (t) {
+      var d = t.legs.map(function (l) { return l.date; }).filter(Boolean).sort();
+      return d.length ? { trip: t, start: d[0], end: d[d.length - 1] } : null;
+    }).filter(Boolean).sort(function (a, b) { return a.start.localeCompare(b.start) || a.end.localeCompare(b.end); });
+  }
+
+  // 最後結束的那一趟（新增旅程時用來預設出發地）
+  function lastTrip() {
+    var list = datedTrips();
+    if (!list.length) return null;
+    return list.reduce(function (a, b) { return b.end >= a.end ? b : a; }).trip;
+  }
+
+  // 兩趟旅程之間的空檔：在哪個家、待幾天
+  function gaps(list) {
+    var out = [];
+    for (var i = 0; i < list.length - 1; i++) {
+      var a = list[i], b = list[i + 1];
+      var days = daysBetween(a.end, b.start);
+      if (days <= 0) continue;
+      out.push({ after: a, before: b, from: a.end, to: b.start, days: days,
+        home: endHomeOf(a.trip) || homeFor(b.trip.origin) || '' });
+    }
+    return out;
+  }
+
+  // 某一天的狀態：在旅程中（{ trip }）或待在哪個家（{ home }）
+  function dayInfo(d, list) {
+    for (var i = 0; i < list.length; i++) {
+      var x = list[i];
+      if (d >= x.start && d <= x.end) {
+        return { trip: x.trip, idx: i, flight: x.trip.legs.some(function (l) { return l.date === d; }),
+          first: d === x.start, last: d === x.end };
+      }
+    }
+    var prev = null, next = null;
+    list.forEach(function (x) {
+      if (x.end < d && (!prev || x.end > prev.end)) prev = x;
+      if (x.start > d && (!next || x.start < next.start)) next = x;
+    });
+    // 第一趟之前：只推測今天以後（應該就在下一趟的出發地），過去沒有資料就不顯示
+    var home = prev ? endHomeOf(prev.trip) : (next && d >= ymd(new Date()) ? homeFor(next.trip.origin) : '');
+    return { home: home || '' };
+  }
+
+  var TRIP_COLORS = ['#2563eb', '#db2777', '#0891b2', '#ea580c', '#7c3aed', '#059669', '#ca8a04'];
+  var HOME_COLORS = ['#f59e0b', '#10b981', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
+  function tripColor(i) { return TRIP_COLORS[i % TRIP_COLORS.length]; }
+  function homeColor(h) {
+    var i = App.homes().indexOf(h);
+    return i < 0 ? '#cbd5e1' : HOME_COLORS[i % HOME_COLORS.length];
+  }
+
+  function homeLegend() {
+    return '<div class="cal-legend">' + App.homes().map(function (h) {
+      return '<span><i style="background:' + homeColor(h) + '"></i>在' + esc(h) + '</span>';
+    }).join('') + '<span><i class="trip-dot"></i>旅程中</span></div>';
+  }
+
+  // ---------- 檢視切換 ----------
+  var viewMode = 'list';
+  var monthCursor = null;   // 'YYYY-MM'
+  var yearCursor = null;
+
+  function renderMode() {
+    document.querySelectorAll('#trip-mode [data-mode]').forEach(function (b) {
+      b.classList.toggle('on', b.getAttribute('data-mode') === viewMode);
+    });
+    $('#trip-view-list').hidden = viewMode !== 'list';
+    $('#trip-view-month').hidden = viewMode !== 'month';
+    $('#trip-view-year').hidden = viewMode !== 'year';
+    if (viewMode === 'list') renderList();
+    if (viewMode === 'month') renderMonth();
+    if (viewMode === 'year') renderYear();
+  }
+
+  $('#trip-mode').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-mode]');
+    if (!b) return;
+    viewMode = b.getAttribute('data-mode');
+    try { localStorage.setItem('luggage-trip-view', viewMode); } catch (err) { /* 不影響使用 */ }
+    renderMode();
+  });
+
+  // ---------- 月曆 ----------
+  function renderMonth() {
+    var list = datedTrips();
+    if (!monthCursor) {
+      var n = App.nextLeg();
+      monthCursor = (n ? n.leg.date : ymd(new Date())).slice(0, 7);
+    }
+    var y = +monthCursor.slice(0, 4), m = +monthCursor.slice(5, 7);
+    $('#cal-month-title').textContent = y + ' 年 ' + m + ' 月';
+    var first = new Date(y, m - 1, 1);
+    var daysIn = new Date(y, m, 0).getDate();
+    var today = ymd(new Date());
+    var cells = '';
+    ['日', '一', '二', '三', '四', '五', '六'].forEach(function (w) { cells += '<div class="cal-wd">' + w + '</div>'; });
+    for (var k = 0; k < first.getDay(); k++) cells += '<div class="cal-cell empty"></div>';
+    for (var d = 1; d <= daysIn; d++) {
+      var ds = ymd(new Date(y, m - 1, d));
+      var info = dayInfo(ds, list);
+      var inner = '<span class="cal-num' + (ds === today ? ' today' : '') + '">' + d + '</span>';
+      if (info.trip) {
+        var dow = new Date(y, m - 1, d).getDay();
+        var showName = info.first || d === 1 || dow === 0;
+        inner += '<span class="cal-bar' + (info.first ? ' first' : '') + (info.last ? ' last' : '') + '" style="background:' + tripColor(info.idx) + '">' +
+          '<span class="nm">' + (info.flight ? '✈️' : '') + (showName ? esc(info.trip.name) : '&nbsp;') + '</span></span>';
+        cells += '<a class="cal-cell in-trip" href="#trips/' + encodeURIComponent(info.trip.id) + '" title="' + esc(info.trip.name) + '">' + inner + '</a>';
+      } else {
+        if (info.home) inner += '<span class="cal-home"><i style="background:' + homeColor(info.home) + '"></i>' + esc(info.home) + '</span>';
+        cells += '<div class="cal-cell">' + inner + '</div>';
+      }
+    }
+    $('#cal-month-grid').innerHTML = cells;
+    $('#cal-month-legend').innerHTML = list.length ? homeLegend() :
+      '<p class="muted small center">還沒有排日期的旅程。新增旅程並填上航班日期，就會顯示在月曆上。</p>';
+  }
+
+  $('#cal-month-prev').addEventListener('click', function () { shiftMonth(-1); });
+  $('#cal-month-next').addEventListener('click', function () { shiftMonth(1); });
+  function shiftMonth(n) {
+    var y = +monthCursor.slice(0, 4), m = +monthCursor.slice(5, 7) - 1 + n;
+    var dt = new Date(y, m, 1);
+    monthCursor = ymd(dt).slice(0, 7);
+    renderMonth();
+  }
+
+  // ---------- 一整年的時間軸 ----------
+  function renderYear() {
+    var list = datedTrips();
+    if (!yearCursor) {
+      var n = App.nextLeg();
+      yearCursor = +(n ? n.leg.date : ymd(new Date())).slice(0, 4);
+    }
+    var y = yearCursor;
+    $('#cal-year-title').textContent = y + ' 年';
+    var today = ymd(new Date());
+
+    // 上方：12 個月的色條，每一天一格
+    var rows = '';
+    for (var m = 1; m <= 12; m++) {
+      var daysIn = new Date(y, m, 0).getDate();
+      var segs = '';
+      for (var d = 1; d <= daysIn; d++) {
+        var ds = ymd(new Date(y, m - 1, d));
+        var info = dayInfo(ds, list);
+        var color = info.trip ? tripColor(info.idx) : (info.home ? homeColor(info.home) : '#e5e7eb');
+        var title = ds + ' ' + (info.trip ? info.trip.name : info.home ? '在' + info.home : '');
+        var cls = 'yd' + (info.trip ? ' trip' : '') + (ds === today ? ' today' : '');
+        segs += info.trip
+          ? '<a class="' + cls + '" style="background:' + color + '" href="#trips/' + encodeURIComponent(info.trip.id) + '" title="' + esc(title) + '"></a>'
+          : '<span class="' + cls + '" style="background:' + color + '" title="' + esc(title) + '"></span>';
+      }
+      rows += '<div class="year-row"><span class="year-m">' + m + '月</span><div class="year-days">' + segs + '</div></div>';
+    }
+    $('#cal-year-strip').innerHTML = list.length ? rows + homeLegend() : '';
+
+    // 下方：依時間列出旅程與中間的空檔
+    var ys = y + '-01-01', ye = y + '-12-31';
+    var inYear = list.filter(function (x) { return x.end >= ys && x.start <= ye; });
+    var gapList = gaps(list).filter(function (g) { return g.to >= ys && g.from <= ye; });
+    var items = inYear.map(function (x) { return { at: x.start, html: tripItem(x, list.indexOf(x)) }; })
+      .concat(gapList.map(function (g) { return { at: g.from + 'z', html: gapItem(g) }; }))
+      .sort(function (a, b) { return a.at.localeCompare(b.at); });
+    // 這一年最後一趟之後回到哪個家
+    var lastInYear = inYear[inYear.length - 1];
+    if (lastInYear && !list.some(function (x) { return x.start > lastInYear.end; })) {
+      var h = endHomeOf(lastInYear.trip);
+      if (h) items.push({ at: 'zz', html: '<div class="tl-gap open"><span class="tl-dot" style="background:' + homeColor(h) + '"></span>' +
+        '<div><b>🏠 之後回到' + esc(h) + '</b><div class="muted small">' + fmtDate(addDays(lastInYear.end, 1)) + ' 起</div></div></div>' });
+    }
+    $('#cal-year-list').innerHTML = items.length ? items.map(function (x) { return x.html; }).join('') :
+      '<p class="muted small center">' + y + ' 年還沒有排日期的旅程。</p>';
+  }
+
+  function tripItem(x, idx) {
+    var cities = [x.trip.origin].concat(x.trip.legs.map(function (l) { return l.to; })).filter(Boolean);
+    var days = daysBetween(x.start, x.end) + 1;
+    return '<a class="tl-trip" href="#trips/' + encodeURIComponent(x.trip.id) + '" style="border-left-color:' + tripColor(idx) + '">' +
+      '<div class="tl-head"><b>' + esc(x.trip.name) + '</b><span class="muted small">' + days + ' 天・編輯 ›</span></div>' +
+      '<div class="muted small">' + fmtDate(x.start) + (x.end !== x.start ? ' ～ ' + fmtDate(x.end) : '') + '</div>' +
+      '<div class="trip-route">' + cities.map(function (c) {
+        return '<span class="city' + (homeFor(c) ? ' is-home' : '') + '">' + (homeFor(c) ? '🏠' : '') + esc(c) + '</span>';
+      }).join('<span class="arrow">→</span>') + '</div></a>';
+  }
+
+  function gapItem(g) {
+    var color = g.home ? homeColor(g.home) : '#cbd5e1';
+    return '<div class="tl-gap"><span class="tl-dot" style="background:' + color + '"></span><div>' +
+      '<b>' + (g.home ? '🏠 在' + esc(g.home) + '待 ' + g.days + ' 天' : '空檔 ' + g.days + ' 天（未設定回到哪個家）') + '</b>' +
+      '<div class="muted small">' + fmtDate(g.from) + ' 回來 → ' + fmtDate(g.to) + ' 出發</div></div></div>';
+  }
+
+  $('#cal-year-prev').addEventListener('click', function () { yearCursor--; renderYear(); });
+  $('#cal-year-next').addEventListener('click', function () { yearCursor++; renderYear(); });
+
   // ---------- 對外 ----------
   function show(param) {
     var inForm = !!param;
     $('#trip-list-view').hidden = inForm;
     $('#trip-form').hidden = !inForm;
-    if (inForm) openForm(param); else renderList();
+    if (inForm) { openForm(param); return; }
+    try {
+      var saved = localStorage.getItem('luggage-trip-view');
+      if (saved && /^(list|month|year)$/.test(saved)) viewMode = saved;
+    } catch (err) { /* 不影響使用 */ }
+    renderMode();
   }
 
   window.Trips = {
     show: show, homeFor: homeFor, homeBadge: homeBadge, fmtDate: fmtDate,
-    allowanceText: allowanceText, legRoute: legRoute
+    allowanceText: allowanceText, legRoute: legRoute, endHomeOf: endHomeOf
   };
 })();

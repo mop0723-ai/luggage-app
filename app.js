@@ -43,7 +43,8 @@
    * sync    預留：雲端帳號 { userId, lastSyncedAt }
    * homes   「家」的清單，衣服標籤的 clothing.home 會是其中之一
    * legacyWardrobe 上一版衣櫃的原始資料，留著備份
-   * trips  旅程：{ id, name, origin, legs[], createdAt, updatedAt,
+   * trips  旅程：{ id, name, origin, endHome, legs[], createdAt, updatedAt,
+   *            endHome：最後一段結束後回到哪個家（null＝還沒設定，依最後一段抵達城市判斷；''＝未定／不回家）
    *            source,     來源：manual 手動、import 匯入訂位紀錄、ai 行程單截圖辨識（預留）
    *            importRef,  預留：匯入資訊 { platform, bookingCode, importedAt, raw }
    *            ownerId, members[], shareCode,  預留：多人共用同一份行程
@@ -98,6 +99,7 @@
     if (t.shareCode === undefined) t.shareCode = null;
     if (t.cloudId === undefined) t.cloudId = null;
     if (t.syncedAt === undefined) t.syncedAt = null;
+    if (t.endHome === undefined) t.endHome = null;
     return t;
   }
 

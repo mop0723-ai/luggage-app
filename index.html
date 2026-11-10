@@ -140,8 +140,36 @@
           <h1>行程設定</h1>
           <a href="#trips/new" class="btn primary small-btn">＋ 新增旅程</a>
         </div>
-        <div id="trip-list"></div>
-        <p id="trip-empty" class="empty-big" hidden>還沒有旅程。<br>點右上角「＋ 新增旅程」，加上每段航班和行李額度，<br>首頁就會依下一段航班計算剩餘公斤數。</p>
+        <div id="trip-mode" class="seg mode-seg">
+          <button type="button" data-mode="list" class="on">列表</button>
+          <button type="button" data-mode="month">月曆</button>
+          <button type="button" data-mode="year">年度時間軸</button>
+        </div>
+
+        <div id="trip-view-list">
+          <div id="trip-list"></div>
+          <p id="trip-empty" class="empty-big" hidden>還沒有旅程。<br>點右上角「＋ 新增旅程」，加上每段航班和行李額度，<br>首頁就會依下一段航班計算剩餘公斤數。</p>
+        </div>
+
+        <div id="trip-view-month" hidden>
+          <div class="cal-nav">
+            <button type="button" id="cal-month-prev" class="icon-btn" aria-label="上個月">‹</button>
+            <b id="cal-month-title"></b>
+            <button type="button" id="cal-month-next" class="icon-btn" aria-label="下個月">›</button>
+          </div>
+          <div id="cal-month-grid" class="cal-grid"></div>
+          <div id="cal-month-legend"></div>
+        </div>
+
+        <div id="trip-view-year" hidden>
+          <div class="cal-nav">
+            <button type="button" id="cal-year-prev" class="icon-btn" aria-label="前一年">‹</button>
+            <b id="cal-year-title"></b>
+            <button type="button" id="cal-year-next" class="icon-btn" aria-label="後一年">›</button>
+          </div>
+          <div id="cal-year-strip" class="card year-strip"></div>
+          <div id="cal-year-list" class="timeline"></div>
+        </div>
       </div>
 
       <form id="trip-form" class="form" autocomplete="off" hidden>
@@ -157,11 +185,18 @@
           <label>出發地
             <input id="tf-origin" maxlength="30" placeholder="例如：曼谷">
           </label>
+          <p id="tf-origin-hint" class="muted small origin-hint" hidden></p>
           <div id="tf-origin-home"></div>
         </div>
 
         <div id="tf-legs"></div>
         <button type="button" id="tf-add-leg" class="btn ghost">＋ 新增一段航班</button>
+
+        <div class="card end-home-box">
+          <div class="field-title">最後一段結束後，回到哪個家</div>
+          <p class="muted small">下一趟旅程會預設從這個家出發；年度時間軸也會用來顯示兩趟之間待在哪裡。</p>
+          <div id="tf-end-home" class="chips"></div>
+        </div>
 
         <button type="submit" class="btn primary save-trip">儲存旅程</button>
         <button type="button" id="tf-delete" class="btn danger" hidden>刪除這趟旅程</button>
