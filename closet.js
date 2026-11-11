@@ -182,8 +182,8 @@
   function openBagSheet(m) {
     sheetEntry = m;
     $('#bag-sheet-title').textContent = '「' + m.name + '」放進哪個行李？';
-    $('#bag-sheet-list').innerHTML = st().bags.map(function (b) {
-      return '<button type="button" class="btn sheet-bag" data-bag="' + esc(b.id) + '">' + esc(b.name) + '</button>';
+    $('#bag-sheet-list').innerHTML = App.pickBags().map(function (b) {
+      return '<button type="button" class="btn sheet-bag" data-bag="' + esc(b.id) + '">' + esc(App.bagLabel(b)) + '</button>';
     }).join('');
     $('#bag-sheet').hidden = false;
   }
@@ -308,10 +308,8 @@
     var bag = item && bags.find(function (b) { return b.id === item.bagId; });
     $('#cf-pack-title').textContent = item ? '已放在「' + (bag ? bag.name : '行李') + '」' : '放進行李';
     $('#cf-bag').hidden = !!item;
-    $('#cf-bag').innerHTML = bags.map(function (b) {
-      return '<option value="' + esc(b.id) + '">' + esc(b.name) + '</option>';
-    }).join('');
-    if (m.bagId && bags.some(function (b) { return b.id === m.bagId; })) $('#cf-bag').value = m.bagId;
+    $('#cf-bag').innerHTML = App.bagOptions();
+    if (m.bagId && App.isTripBag(m.bagId)) $('#cf-bag').value = m.bagId;
     $('#cf-pack').textContent = item ? '從行李拿出來' : '放進行李';
     $('#cf-pack').classList.toggle('out', !!item);
   }

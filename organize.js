@@ -94,7 +94,7 @@
     $('#org-sub').textContent = cur.trip.name + '・' + window.Trips.fmtDate(cur.date) +
       (cur.last ? '・旅程最後一段' : '・下一站：' + (cur.trip.legs[cur.index + 1] ? cur.trip.legs[cur.index + 1].to || '下一段' : ''));
     $('#org-home-title').textContent = cur.home + '的衣櫃和抽屜裡的物品（勾選要帶去下一站的）';
-    $('#org-bag').innerHTML = st().bags.map(function (b) { return '<option value="' + esc(b.id) + '">' + esc(b.name) + '</option>'; }).join('');
+    $('#org-bag').innerHTML = App.bagOptions();
     render();
     $('#org-sheet').hidden = false;
     $('#org-sheet .org-panel').scrollTop = 0;

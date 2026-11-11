@@ -246,7 +246,7 @@
     $('#drd-name').value = cur.name;
     $('#drd-cat').innerHTML = cats().map(function (c) { return '<option' + (c === cur.category ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('');
     $('#drd-weight').value = Math.round((cur.weight || 0) * 1000);
-    $('#drd-bag').innerHTML = st().bags.map(function (b) { return '<option value="' + esc(b.id) + '">' + esc(b.name) + '</option>'; }).join('');
+    $('#drd-bag').innerHTML = App.bagOptions();
     renderDetail();
     $('#dr-sheet').hidden = false;
     $('#dr-sheet .org-panel').scrollTop = 0;

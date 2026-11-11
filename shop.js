@@ -179,15 +179,15 @@
     var t = curTrip();
     $('#shop-empty').hidden = !!trips.length;
     $('#shop-main').hidden = !trips.length;
-    if (!trips.length) return;
-    $('#shop-trip').innerHTML = trips.map(function (x) {
-      return '<option value="' + esc(x.id) + '"' + (x.id === tripId ? ' selected' : '') + '>' + esc(x.name || '未命名旅程') + '</option>';
-    }).join('');
     Array.prototype.forEach.call(document.querySelectorAll('[data-shop-tab]'), function (b) {
       b.classList.toggle('on', b.getAttribute('data-shop-tab') === tab);
     });
     $('#shop-h1').textContent = tab === 'gift' ? '送禮與伴手禮' : '回程購物';
     $('#shop-h1').setAttribute('data-en', tab === 'gift' ? 'GIFTS' : 'SHOPPING');
+    if (!trips.length) return;
+    $('#shop-trip').innerHTML = trips.map(function (x) {
+      return '<option value="' + esc(x.id) + '"' + (x.id === tripId ? ' selected' : '') + '>' + esc(x.name || '未命名旅程') + '</option>';
+    }).join('');
     $('#shop-buy').hidden = tab !== 'buy';
     $('#shop-gift').hidden = tab !== 'gift';
     if (tab === 'buy') renderBuy(t); else renderGift(t);
@@ -327,9 +327,10 @@
   }
 
   function defaultBagId() {
-    var bags = st().bags;
-    var used = bags.filter(function (b) { return App.bagLocOf(b).state === 'out'; });
-    var pick = used.find(function (b) { return b.kind === 'checked'; }) || used[0] || bags.find(function (b) { return b.kind === 'checked'; }) || bags[0];
+    // 這趟用到的箱子優先（托運優先），不會選到放在別的家的箱子
+    var bags = App.pickBags().filter(function (b) { return App.isTripBag(b.id); });
+    if (!bags.length) bags = App.pickBags();
+    var pick = bags.find(function (b) { return b.kind === 'checked'; }) || bags[0];
     return pick ? pick.id : '';
   }
 
@@ -363,7 +364,7 @@
   }
 
   function renderBuyForm() {
-    chipList($('#buy-bag'), st().bags.map(function (b) { return [b.id, b.name]; }).concat([['', '不放進行李']]), buy.bagId, 'data-buy-bag');
+    chipList($('#buy-bag'), App.pickBags().map(function (b) { return [b.id, App.bagLabel(b)]; }).concat([['', '不放進行李']]), buy.bagId, 'data-buy-bag');
     var cities = tripCities(tripById(buy.tripId));
     if (buy.city && cities.indexOf(buy.city) < 0) cities.push(buy.city);
     chipList($('#buy-city'), cities, buy.city, 'data-buy-city', '<button type="button" class="chip" data-buy-city-other="1">其他</button>');
@@ -502,7 +503,7 @@
       return '<button type="button" class="' + (gift.status === x[0] ? 'on' : '') + '" data-gift-status="' + x[0] + '">' + x[1] + '</button>';
     }).join('');
     $('#gift-bag-wrap').hidden = gift.status !== 'packed';
-    chipList($('#gift-bag'), st().bags.map(function (b) { return [b.id, b.name]; }), gift.bagId, 'data-gift-bag');
+    chipList($('#gift-bag'), App.pickBags().map(function (b) { return [b.id, App.bagLabel(b)]; }), gift.bagId, 'data-gift-bag');
   }
 
   // 把禮物放進行李（從抽屜挑的，抽屜那件的位置也一起變成「在行李裡」）
@@ -512,9 +513,23 @@
     if (!bagId) bagId = defaultBagId();
     if (!it) {
       var m = g.drawerId && App.entryById(g.drawerId);
-      it = { id: App.uid(), giftId: g.id };
-      if (m && !App.packedItem(m)) { App.markPacked(m, bagId); it.catalogId = m.id; }
-      s.items.push(it);
+      // 抽屜那件已經在行李裡：直接用行李裡那份，不要重複算重量
+      var already = m && s.items.find(function (x) { return x.catalogId === m.id && !x.giftId; });
+      if (already) {
+        bagId = already.bagId;
+        if ((already.qty || 1) > g.qty) {
+          already.qty -= g.qty;
+          it = { id: App.uid(), giftId: g.id, catalogId: m.id };
+          s.items.push(it);
+        } else {
+          it = already;
+          it.giftId = g.id;
+        }
+      } else {
+        it = { id: App.uid(), giftId: g.id };
+        if (m) it.catalogId = m.id;
+        s.items.push(it);
+      }
     }
     it.name = g.name; it.weight = g.weight; it.qty = g.qty; it.unit = '份'; it.category = '禮物'; it.bagId = bagId;
     var m2 = it.catalogId && App.entryById(it.catalogId);
@@ -653,7 +668,7 @@
     sh().ratio[t.id] = Math.round(this.value) / 100;
     renderQuota(t); renderTry();
   });
-  $('#shop-ratio').addEventListener('change', function () { App.saveQuiet(); });
+  $('#shop-ratio').addEventListener('change', function () { App.save(); });   // 也會同步到雲端
   $('#shop-try').addEventListener('input', renderTry);
 
   $('#shop-plan-form').addEventListener('submit', function (e) {

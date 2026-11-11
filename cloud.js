@@ -101,7 +101,10 @@
     return out;
   }
 
+  function plainObj(x) { return !!x && typeof x === 'object' && !Array.isArray(x); }
+
   // 三方合併：base＝上次同步的內容（第一次同步時是 null，兩邊全部保留）
+  // 裡面是物件的欄位（例如回程購物 shopping：plans、purchases、ratio）也逐項合併，兩台都改過時不會整包蓋掉
   function merge3(base, local, remote) {
     var hasBase = !!base;
     base = base || {};
@@ -117,6 +120,7 @@
         if (byIdArray(both)) { out[k] = mergeById(bArr, l, r, hasBase && Array.isArray(b)); return; }
         if (primitiveArray(both)) { out[k] = mergeSet(bArr, l, r, hasBase && Array.isArray(b)); return; }
       }
+      if (plainObj(l) && plainObj(r)) { out[k] = merge3(hasBase && plainObj(b) ? b : null, l, r); return; }
       out[k] = hasBase && eq(l, b) ? r : l;
     });
     return out;
@@ -273,6 +277,7 @@
 
         // 雲端還沒有資料：把這台的資料上傳
         if (!res.data) {
+          delete local.pristine;
           return client.from('app_state').insert({ user_id: uid, data: local, version: 1 }).then(function (ins) {
             if (ins.error) {
               if (ins.error.code === '23505') return loop();   // 另一台剛好先建立了，改走合併
@@ -285,7 +290,9 @@
 
         var remote = res.data.data || {};
         var rv = res.data.version;
-        var merged = base && rv === meta.version ? local : merge3(base, local, remote);
+        // 這台是剛裝好、還沒用過的：直接用雲端的資料
+        var merged = !base && local.pristine ? clone(remote) : base && rv === meta.version ? local : merge3(base, local, remote);
+        delete merged.pristine;
 
         // 合併期間你剛好又改了資料：重來一次，避免蓋掉
         if (!eq(App.state(), local)) return loop();
@@ -303,7 +310,8 @@
           .then(function (up) {
             if (up.error) throw up.error;
             if (!up.data || !up.data.length) {          // 另一台剛好也更新了：用最新的再合併一次
-              meta = { userId: uid, version: -1, base: JSON.stringify(merged) };
+              // 基準維持「上次真正同步的內容」，不能換成這次合併的結果，否則這台新增的東西會被當成在別台刪掉
+              meta = { userId: uid, version: -1, base: base ? JSON.stringify(base) : null };
               return loop();
             }
             meta = { userId: uid, version: rv + 1, base: JSON.stringify(merged) };

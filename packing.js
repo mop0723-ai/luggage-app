@@ -365,9 +365,10 @@
   }
 
   // 給首頁用：下一趟旅程的清單上「要帶但還沒收好」的重量（依行李箱）
+  // 打包清單上還沒收的東西只在出發前算進重量（出發後沒帶的就是沒帶）
   function pendingByBag() {
     var next = App.nextLeg();
-    var list = next && listFor(next.trip.id);
+    var list = next && next.index === 0 && listFor(next.trip.id);
     var out = {};
     if (!list) return out;
     reconcile(list);
@@ -769,7 +770,8 @@
 
   // 某個行李箱裡「清單上要帶、還沒收好」的項目
   function bagPending(bagId) {
-    var l = nextList(false);
+    var n = App.nextLeg();
+    var l = n && n.index === 0 ? nextList(false) : null;
     if (!l) return [];
     var act = activeZones(l);
     return l.entries.filter(function (e) {
@@ -846,8 +848,28 @@
     App.save();
   }
 
+  // 這趟用到的行李箱：打包清單上啟用的箱子＋裡面有東西的箱子；
+  // 還沒有打包清單時，用每種類型的第一個箱子（出發地的家優先，和產生清單時的預設一樣）
+  function tripBagIds(t) {
+    var ids = [];
+    function add(id) { if (id && ids.indexOf(id) < 0 && App.bagById(id)) ids.push(id); }
+    st().items.forEach(function (it) { add(it.bagId); });
+    if (!t) return ids;
+    var list = listFor(t.id);
+    if (list) activeZones(list).forEach(function (z) { add(list.zones[z].bagId); });
+    else {
+      var origin = window.Trips ? window.Trips.homeFor(t.origin) : '';
+      ZONES.forEach(function (z) {
+        if (ids.some(function (id) { return App.bagById(id).kind === z[0]; })) return;
+        var b = firstBag(z[0], origin);
+        if (b) add(b.id);
+      });
+    }
+    return ids;
+  }
+
   window.Packing = {
-    show: show, pendingByBag: pendingByBag, bagPending: bagPending, checkEntry: checkEntry, uncheckItem: uncheckItem,
+    show: show, tripBagIds: tripBagIds, pendingByBag: pendingByBag, bagPending: bagPending, checkEntry: checkEntry, uncheckItem: uncheckItem,
     moveItem: moveItem, moveEntryTo: moveEntryTo, takeOutItem: takeOutItem, takeOutEntry: takeOutEntry
   };
 })();
