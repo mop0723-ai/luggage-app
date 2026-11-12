@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@300;400;600&display=swap">
-  <link rel="stylesheet" href="style.css?v=20261111b">
+  <link rel="stylesheet" href="style.css?v=20261112a">
 </head>
 <body>
   <main>
@@ -451,7 +451,7 @@
         </div>
 
         <div id="cf-extra" hidden>
-          <div class="card pack-box">
+          <div class="card pack-box" hidden>
             <div class="field-title" id="cf-pack-title">放進行李</div>
             <div class="row">
               <select id="cf-bag" aria-label="放在哪個行李"></select>
@@ -474,7 +474,7 @@
     <button type="button" id="plus-btn" class="plus-btn" aria-label="新增" aria-haspopup="dialog">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
     </button>
-    <a href="#pack" data-views="pack add bags">
+    <a href="#pack" data-views="pack bags">
       <svg class="ico" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="7" width="14" height="13.5" rx="1"/><path d="M9 7V4.5h6V7"/><path d="M9 11.5h6"/><path d="M8.5 20.5v1"/><path d="M15.5 20.5v1"/></svg><span>打包</span>
     </a>
     <a href="#closet" data-views="closet drawer">
@@ -486,7 +486,6 @@
   <div id="plus-sheet" class="sheet plus-sheet" hidden>
     <div class="sheet-panel plus-panel" role="dialog" aria-modal="true" aria-label="新增">
       <div class="eyebrow center">ADD</div>
-      <a class="plus-item" href="#add"><span>放進行李</span><span class="muted small">把東西放進這趟的行李箱</span></a>
       <a class="plus-item" href="#closet/new"><span>新增衣服</span><span class="muted small">拍照、選類別，放進衣櫃</span></a>
       <a class="plus-item" href="#drawer" data-focus="dr-name"><span>新增抽屜物品</span><span class="muted small">衣服以外的東西</span></a>
       <a class="plus-item" href="#shop" data-plus-buy="1"><span>記一筆購物</span><span class="muted small">旅途中買的東西、重量、放進哪個行李</span></a>
@@ -502,7 +501,7 @@
       <div class="home-switch more-switch"><button type="button" data-more-tab="closet" class="on">衣櫃</button><button type="button" data-more-tab="drawer">抽屜</button></div>
       <input id="more-search" class="more-search" placeholder="搜尋名稱" autocomplete="off">
       <div id="more-list"></div>
-      <a class="link small more-add-link" href="#add">找不到？到「放進行李」新增 ›</a>
+      <a class="link small more-add-link" href="#pack" data-pack-add="1">找不到？到「打包清單」手動新增 ›</a>
       <button type="button" id="more-close" class="btn primary">完成</button>
     </div>
   </div>
@@ -586,8 +585,8 @@
       <div class="field-title">移到另一個家</div>
       <div id="drd-homes" class="chips"></div>
 
-      <div class="field-title">放進行李</div>
-      <div class="pack-box-row">
+      <div class="field-title" hidden>放進行李</div>
+      <div class="pack-box-row" hidden>
         <select id="drd-bag" aria-label="放在哪個行李"></select>
         <button type="button" id="drd-pack" class="btn ghost pack-btn">放進行李</button>
       </div>
@@ -692,6 +691,7 @@
         <label>價格 <span class="muted">（選填）</span><input id="buy-price" maxlength="20" placeholder="例如 ฿350"></label>
         <label>品類<select id="buy-cat"></select></label>
       </div>
+      <p id="buy-note" class="muted small" hidden></p>
       <p id="buy-try" class="shop-try-out"></p>
       <div class="field-title">放進哪個行李</div>
       <div id="buy-bag" class="chips"></div>
@@ -718,6 +718,7 @@
         <div id="gift-drawer" class="chips"></div>
       </div>
       <label>禮物名稱<input id="gift-name" maxlength="40" placeholder="例如：鳳梨酥、茶葉"></label>
+      <p id="gift-drawer-note" class="muted small" hidden>名稱和重量跟抽屜那件一樣，要改請到「我的抽屜」。</p>
       <div class="dr-add-grid">
         <label>重量（每份）<span class="input-unit"><input id="gift-weight" type="number" inputmode="decimal" min="0" step="any" placeholder="0.3"><span class="unit-text">kg</span></span></label>
         <label>數量<input id="gift-qty" type="number" inputmode="numeric" min="1" step="1" value="1"></label>
@@ -750,20 +751,20 @@
     </div>
   </div>
 
-  <script src="weights.js?v=20261111b"></script>
-  <script src="photos.js?v=20261111b"></script>
-  <script src="clothing.js?v=20261111b"></script>
-  <script src="app.js?v=20261111b"></script>
-  <script src="closet.js?v=20261111b"></script>
-  <script src="trips.js?v=20261111b"></script>
-  <script src="organize.js?v=20261111b"></script>
-  <script src="packing.js?v=20261111b"></script>
-  <script src="drawer.js?v=20261111b"></script>
-  <script src="bags.js?v=20261111b"></script>
-  <script src="shop.js?v=20261111b"></script>
-  <script src="nav.js?v=20261111b"></script>
-  <script src="backup.js?v=20261111b"></script>
+  <script src="weights.js?v=20261112a"></script>
+  <script src="photos.js?v=20261112a"></script>
+  <script src="clothing.js?v=20261112a"></script>
+  <script src="app.js?v=20261112a"></script>
+  <script src="closet.js?v=20261112a"></script>
+  <script src="trips.js?v=20261112a"></script>
+  <script src="organize.js?v=20261112a"></script>
+  <script src="packing.js?v=20261112a"></script>
+  <script src="drawer.js?v=20261112a"></script>
+  <script src="bags.js?v=20261112a"></script>
+  <script src="shop.js?v=20261112a"></script>
+  <script src="nav.js?v=20261112a"></script>
+  <script src="backup.js?v=20261112a"></script>
   <script src="vendor/supabase.js"></script>
-  <script src="cloud.js?v=20261111b"></script>
+  <script src="cloud.js?v=20261112a"></script>
 </body>
 </html>

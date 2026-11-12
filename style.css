@@ -1398,3 +1398,8 @@ input:focus, select:focus { outline: 1px solid var(--primary); }
 .org-swap-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0; }
 .org-swap-row span { min-width: 90px; }
 .org-swap-row select { flex: 1; min-width: 160px; }
+
+/* 只能看、不能改的欄位（例如已放進抽屜的購物紀錄、從抽屜挑的禮物） */
+.form input:disabled, .form select:disabled { color: var(--muted); background: transparent; }
+#buy-sheet.locked .chips { opacity: 0.5; pointer-events: none; }
+#buy-sheet.locked #buy-try { display: none; }

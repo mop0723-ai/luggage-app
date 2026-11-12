@@ -75,7 +75,11 @@
       }
       return;
     }
-    if (t.closest('.more-add-link')) { $('#more-sheet').hidden = true; return; }
+    if (t.closest('.more-add-link')) {
+      $('#more-sheet').hidden = true;
+      setTimeout(function () { if (window.Packing) window.Packing.openAdd(); }, 350);   // 到打包清單後直接打開「手動新增」
+      return;
+    }
     if (t.id === 'more-sheet' || t.id === 'more-close') $('#more-sheet').hidden = true;
   });
   $('#more-search').addEventListener('input', renderMore);

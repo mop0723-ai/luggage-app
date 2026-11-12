@@ -357,6 +357,13 @@
       return '<option' + (c.name === buy.category ? ' selected' : '') + '>' + esc(c.name) + '</option>';
     }).join('');
     $('#buy-delete').hidden = buy.isNew;
+    // 已經放到家裡（進了抽屜）的購物：只留作紀錄，東西本身到抽屜改，才不會有兩份不一樣的資料
+    buy.locked = !buy.isNew && !!(p && p.placedHome) && !itemOfPurchase(p);
+    $('#buy-note').hidden = !buy.locked;
+    $('#buy-note').textContent = buy.locked ? '這筆已經放到' + p.placedHome + '的家，現在在「我的抽屜」裡。這裡只留作購物紀錄；要改名稱或重量請到抽屜。' : '';
+    ['#buy-name', '#buy-weight', '#buy-qty', '#buy-price', '#buy-cat'].forEach(function (s) { $(s).disabled = buy.locked; });
+    $('#buy-save').hidden = buy.locked;
+    $('#buy-sheet').classList.toggle('locked', buy.locked);
     renderBuyForm();
     $('#buy-sheet').hidden = false;
     $('#buy-sheet .org-panel').scrollTop = 0;
@@ -433,6 +440,7 @@
 
   $('#buy-sheet').addEventListener('click', function (e) {
     var t = e.target, el;
+    if (buy && buy.locked && t.closest('[data-buy-bag], [data-buy-city], [data-buy-city-other], [data-buy-home]')) return;
     if ((el = t.closest('[data-buy-bag]'))) { buy.bagId = el.getAttribute('data-buy-bag'); renderBuyForm(); return; }
     if ((el = t.closest('[data-buy-city-other]'))) {
       window.Clothing.askText('在哪個城市買的？', '').then(function (v) { v = (v || '').trim().slice(0, 20); if (v) { buy.city = v; renderBuyForm(); } });
@@ -469,6 +477,8 @@
         bagId: defaultBagId(), home: '', isNew: true };
     }
     $('#gift-title').textContent = gift.isNew ? '新增禮物' : '編輯禮物';
+    var dm0 = gift.source === 'drawer' && gift.drawerId && App.entryById(gift.drawerId);
+    if (dm0) { gift.name = dm0.name; gift.weight = dm0.weight || 0; }
     $('#gift-name').value = gift.name;
     $('#gift-weight').value = gift.weight === '' ? '' : gift.weight;
     $('#gift-qty').value = gift.qty || 1;
@@ -503,6 +513,10 @@
       return '<button type="button" class="' + (gift.status === x[0] ? 'on' : '') + '" data-gift-status="' + x[0] + '">' + x[1] + '</button>';
     }).join('');
     $('#gift-bag-wrap').hidden = gift.status !== 'packed';
+    var fromDrawer = gift.source === 'drawer' && !!gift.drawerId && !!App.entryById(gift.drawerId);
+    $('#gift-name').disabled = fromDrawer;
+    $('#gift-weight').disabled = fromDrawer;
+    $('#gift-drawer-note').hidden = !fromDrawer;
     chipList($('#gift-bag'), App.pickBags().map(function (b) { return [b.id, App.bagLabel(b)]; }), gift.bagId, 'data-gift-bag');
   }
 
@@ -575,6 +589,8 @@
     if (!g) return;
     g.name = name;
     g.weight = num($('#gift-weight').value);
+    var dm = gift.source === 'drawer' && gift.drawerId && App.entryById(gift.drawerId);
+    if (dm) { g.name = dm.name; g.weight = dm.weight || 0; }
     g.qty = Math.max(1, parseInt($('#gift-qty').value, 10) || 1);
     g.to = $('#gift-to').value.trim().slice(0, 20);
     g.city = gift.city || '';
@@ -607,8 +623,8 @@
     if ((el = t.closest('[data-gift-drawer]'))) {
       var m = App.entryById(el.getAttribute('data-gift-drawer'));
       gift.drawerId = m.id;
-      if (!$('#gift-name').value.trim()) $('#gift-name').value = m.name;
-      if ($('#gift-weight').value === '') $('#gift-weight').value = Math.round((m.weight || 0) * 1000) / 1000;
+      $('#gift-name').value = m.name;   // 從抽屜挑的：名稱、重量都跟抽屜那件一樣
+      $('#gift-weight').value = Math.round((m.weight || 0) * 1000) / 1000;
       if (gift.status === 'want') gift.status = 'bought';
       renderGiftForm();
       return;

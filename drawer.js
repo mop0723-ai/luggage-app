@@ -288,6 +288,8 @@
     cur.updatedAt = Date.now();
     // 已在行李裡的話，同步名稱和重量
     st().items.forEach(function (it) { if (it.catalogId === cur.id) { it.name = cur.name; it.weight = cur.weight; } });
+    // 從這件挑出來的禮物也一起更新
+    (st().gifts || []).forEach(function (g) { if (g.drawerId === cur.id) { g.name = cur.name; g.weight = cur.weight; g.updatedAt = Date.now(); } });
   }
 
   $('#dr-sheet').addEventListener('click', function (e) {

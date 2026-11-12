@@ -133,8 +133,6 @@
         '<div class="brand">' + esc([C.typeName(c) !== m.name ? C.typeName(c) : '', c.brand].filter(Boolean).join('・')) + '&nbsp;</div>' +
         '<div class="home' + (loc.state === 'none' ? ' muted' : '') + '">' + esc(App.locText(loc)) + '</div>' +
         '</a>' +
-        '<button type="button" class="cloth-pack' + (packed ? ' done' : '') + '" data-pack="' + esc(m.id) + '">' +
-        (packed ? '✓ 已打包・' + esc(bagName(packed.bagId)) : '放進行李') + '</button>' +
         '</div>';
     }).join('') : (all.length ? '<p class="empty">沒有符合的衣服</p>' : '');
     Photos.fillThumbs($('#closet-grid'));

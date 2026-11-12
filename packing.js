@@ -280,6 +280,9 @@
         e.checked = false; e.itemId = null; changed = true;
       }
       if (e.itemId) byItem[e.itemId] = e;
+      // 衣櫃、抽屜裡改過名稱或重量：清單跟著用最新的（同一樣東西只有一個重量）
+      var m = e.catalogId && App.entryById(e.catalogId);
+      if (m && (e.name !== m.name || e.weight !== m.weight)) { e.name = m.name; e.weight = m.weight; changed = true; }
     });
     items.forEach(function (it) {
       if (byItem[it.id]) {
@@ -496,19 +499,30 @@
     $('#pack-progress-bar').style.width = pct + '%';
     var stats = zoneStats(list, curTrip);
     var total = 0, limit = 0;
+    // 這趟就是下一段航班的旅程：和首頁用同一套計算（同一個剩餘公斤數）
+    var info = App.remainInfo();
+    var same = info.next && info.next.trip.id === curTrip.id;
+    if (same) {
+      stats = info.bags.map(function (bag) {
+        var w = info.loads[bag.id] || 0, lim = info.limits[bag.id] || 0;
+        return { zone: bag.kind, bag: bag, weight: w, limit: lim, level: level(lim - w, lim) };
+      });
+    }
     $('#pack-weights').innerHTML = stats.map(function (s) {
       total += s.weight; limit += s.limit;
       var p = s.limit > 0 ? Math.min(100, s.weight / s.limit * 100) : 100;
-      return '<div class="pk-w ' + s.level + '"><div class="pk-w-head"><span>' + zoneName(s.zone) + '</span>' +
+      return '<div class="pk-w ' + s.level + '"><div class="pk-w-head"><span>' + zoneName(s.zone) + (same ? '・' + esc(s.bag.name) : '') + '</span>' +
         '<b>' + fmt(s.weight) + ' / ' + fmt(s.limit) + ' kg</b></div>' +
         '<div class="bar ' + s.level + '"><i style="width:' + p + '%"></i></div>' +
         '<div class="muted small">' + (s.level === 'bad' ? '超重 ' + fmt(s.weight - s.limit) + ' kg' : '還可以放 ' + fmt(s.limit - s.weight) + ' kg') +
         '・含空箱 ' + fmt(Number(s.bag.tare) || 0) + ' kg</div></div>';
     }).join('');
+    if (same) { total = info.total; limit = info.limit; }
     var lv = level(limit - total, limit);
     $('#pack-total').className = 'pk-total ' + lv;
-    $('#pack-total').innerHTML = '總重量 <b>' + fmt(total) + ' kg</b>　／額度 ' + fmt(limit) + ' kg';
-    var leg = legFor(curTrip);
+    $('#pack-total').innerHTML = '總重量 <b>' + fmt(total) + ' kg</b>　／額度 ' + fmt(limit) + ' kg' +
+      (same ? '　<span class="muted">還剩 ' + fmt(limit - total) + ' kg（和首頁相同）</span>' : '');
+    var leg = same ? info.next.leg : legFor(curTrip);
     $('#pack-leg-note').textContent = leg ? '額度依這趟的「' + (leg.from || '?') + ' → ' + (leg.to || '?') + '」；重量包含清單上還沒收好的東西' : '';
   }
 
@@ -658,6 +672,7 @@
 
   // ---------- 手動新增 ----------
   function openAdd() {
+    if (!curList || $('#pack-main').hidden) return;
     $('#pk-add-name').value = ''; $('#pk-add-weight').value = ''; $('#pk-add-qty').value = 1; $('#pk-add-only').checked = false;
     $('#pk-add-zone').innerHTML = activeZones(curList).map(function (z) { return '<option value="' + z + '">' + zoneName(z) + '</option>'; }).join('');
     var names = [];
@@ -869,7 +884,7 @@
   }
 
   window.Packing = {
-    show: show, tripBagIds: tripBagIds, pendingByBag: pendingByBag, bagPending: bagPending, checkEntry: checkEntry, uncheckItem: uncheckItem,
+    show: show, tripBagIds: tripBagIds, openAdd: openAdd, pendingByBag: pendingByBag, bagPending: bagPending, checkEntry: checkEntry, uncheckItem: uncheckItem,
     moveItem: moveItem, moveEntryTo: moveEntryTo, takeOutItem: takeOutItem, takeOutEntry: takeOutEntry
   };
 })();

@@ -413,15 +413,17 @@
     var pend = window.Packing ? window.Packing.pendingByBag() : {};
     var used = activeBags(next);
     var limits = bagLimits(next, used);
-    var total = 0, limit = 0;
-    used.forEach(function (b) { total += bagLoad(b) + (pend[b.id] ? pend[b.id].weight : 0); });
-    // 總上限：每種額度各算一次（有填就用航班額度，沒填就加總那類行李自己的上限）
+    var total = 0, limit = 0, loads = {};
+    used.forEach(function (b) { loads[b.id] = bagLoad(b) + (pend[b.id] ? pend[b.id].weight : 0); total += loads[b.id]; });
+    // 總上限：這趟有帶的每種行李各算一次額度（有填就用航班額度，沒填就加總那類行李自己的上限）；
+    // 沒帶的種類（例如沒帶背包）不算，首頁、打包、購物都用這個數字
     BAG_KINDS.forEach(function (k) {
+      if (!used.some(function (b) { return b.kind === k[0]; })) return;
       var a = next ? allowanceOf(next.leg, k[0]) : null;
       if (a != null) limit += a;
       else used.forEach(function (b) { if (b.kind === k[0]) limit += limits[b.id]; });
     });
-    return { next: next, limits: limits, bags: used, pend: pend, total: total, limit: limit, remain: next ? limit - total : null };
+    return { next: next, limits: limits, loads: loads, bags: used, pend: pend, total: total, limit: limit, remain: next ? limit - total : null };
   }
 
   // 箱子裡的東西搬到另一個箱子（換行李箱）
@@ -1214,6 +1216,8 @@
   // 網址：#home、#add、#closet（衣櫃）、#closet/new（新增衣服）、#closet/<id>（編輯衣服）
   function route() {
     var parts = location.hash.replace(/^#/, '').split('/');
+    // 「放進行李」頁已經整併到打包清單（手動新增）和首頁「我的行李」
+    if (parts[0] === 'add') { location.replace('#pack'); return; }
     var VIEWS = ['home', 'add', 'closet', 'trips', 'pack', 'drawer', 'shop', 'bags'];
     var view = VIEWS.indexOf(parts[0]) >= 0 ? parts[0] : 'home';
     VIEWS.forEach(function (v) { $('#view-' + v).hidden = v !== view; });
